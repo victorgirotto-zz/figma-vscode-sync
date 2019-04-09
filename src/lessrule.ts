@@ -47,7 +47,6 @@ export class LessRule {
         this.children.forEach(child => {
             for(let prop in child.props){
                 if(prop in this.props && child.props[prop] === this.props[prop]){
-                    console.log('Deleting child');
                     // Both this element and the rule have the same property with the same value. Delete the child's
                     delete child.props[prop];
                     // Do the same for each rule child

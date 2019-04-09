@@ -19,7 +19,28 @@
 				"command": "extension.figmaToLess",
 				"title": "Generate LESS file from Figma"
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Figma Sync",
+			"properties": {
+				"figmaSync.APIKey": {
+					"type": "string",
+					"default": "",
+					"description": "Your Figma API key"
+				},
+				"figmaSync.fileKey": {
+					"type": "string",
+					"default": "",
+					"description": "The key for the file containing your design system"
+				},
+				"figmaSync.outFileName": {
+					"type": "string",
+					"default": "",
+					"description": "(optional) The name of the file that will be generated."
+				}
+			}
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

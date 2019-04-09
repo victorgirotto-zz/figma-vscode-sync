@@ -15,27 +15,34 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let disposable = vscode.commands.registerCommand('extension.figmaToLess', () => {
 
-		// TODO move to settings
-		const token = '11224-5e65e112-a4e8-4195-b72a-4e2f88b8658c';
-		const fileKey = 'dhcM7g1aZbRIgcUr2BEcWaYV';
+		// Get configurations
+		const config = vscode.workspace.getConfiguration('figmaSync');
+		const token = config.get('APIKey') as string;
+		const fileKey = config.get('fileKey') as string;
+		const outFileName = config.get('outFileName') ? config.get('outFileName') as string : 'design-system';
 
-		// Get file data from API
-		out(`Retrieving data for file ${fileKey}...`);
-		const client = Figma.Client({ personalAccessToken: token });
-		client.file(fileKey).then(({ data }) => {
+		if(!token || !fileKey){
+			console.error('You must set both the API key and the File Key in the settings to use Figma Sync');
+		} else {
+			// Get file data from API
+			out(`Retrieving data for file ${fileKey}...`);
+			const client = Figma.Client({ personalAccessToken: token });
+			client.file(fileKey).then(({ data }) => {
+	
+				// Retrieved data. Parse it.
+				out('... Done!');
+				out('Parsing the data...');
+				let figmaLess = new FigmaLessParser(fileKey, data);
+	
+				// Done. Print file.
+				out('... Done!');
+				out('Writing file...');
+				let fileString = figmaLess.getFileContentString();
+				Util.writeFile(fileString, `${outFileName}.less`);
+				out('... Done!');
+			});
+		}
 
-			// Retrieved data. Parse it.
-			out('... Done!');
-			out('Parsing the data...');
-			let figmaLess = new FigmaLessParser(fileKey, data);
-
-			// Done. Print file.
-			out('... Done!');
-			out('Writing file...');
-			let fileString = figmaLess.getFileContentString();
-			Util.writeFile(fileString, 'design-system.less');
-			out('... Done!');
-		});
 	});
 
 	// Publish command
