@@ -7,19 +7,18 @@ import { Util } from './util';
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	console.log('Activated figma-sync!');
-
 	let out = function (text: string) {
 		console.log(text);
 	}
 
 	let disposable = vscode.commands.registerCommand('extension.figmaToLess', () => {
+		out('Generating .less file from Figma design.');
 
 		// Get configurations
-		const config = vscode.workspace.getConfiguration('figmaSync');
-		const token = config.get('APIKey') as string;
-		const fileKey = config.get('fileKey') as string;
-		const outFileName = config.get('outFileName') ? config.get('outFileName') as string : 'design-system';
+		const config = vscode.workspace.getConfiguration();
+		const token = config.get('general.APIKey') as string;
+		const fileKey = config.get('general.fileKey') as string;
+		const outFileName = config.get('general.outFileName') ? config.get('general.outFileName') as string : 'design-system';
 
 		if(!token || !fileKey){
 			console.error('You must set both the API key and the File Key in the settings to use Figma Sync');
@@ -30,16 +29,14 @@ export function activate(context: vscode.ExtensionContext) {
 			client.file(fileKey).then(({ data }) => {
 	
 				// Retrieved data. Parse it.
-				out('... Done!');
 				out('Parsing the data...');
-				let figmaLess = new FigmaLessParser(fileKey, data);
+				let figmaLess = new FigmaLessParser(fileKey, data, config);
 	
 				// Done. Print file.
-				out('... Done!');
 				out('Writing file...');
 				let fileString = figmaLess.getFileContentString();
 				Util.writeFile(fileString, `${outFileName}.less`);
-				out('... Done!');
+				out('DONE!');
 			});
 		}
 

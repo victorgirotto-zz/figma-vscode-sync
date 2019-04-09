@@ -24,20 +24,40 @@
 			"type": "object",
 			"title": "Figma Sync",
 			"properties": {
-				"figmaSync.APIKey": {
+				"general.APIKey": {
 					"type": "string",
 					"default": "",
 					"description": "Your Figma API key"
 				},
-				"figmaSync.fileKey": {
+				"general.fileKey": {
 					"type": "string",
 					"default": "",
 					"description": "The key for the file containing your design system"
 				},
-				"figmaSync.outFileName": {
+				"general.outFileName": {
 					"type": "string",
 					"default": "",
 					"description": "(optional) The name of the file that will be generated."
+				},
+				"fileInformation.tokensFrameName": {
+					"type": "string",
+					"default": "Tokens",
+					"description": "The name of the frame containing the literal tokens"
+				},
+				"fileInformation.typographyFrameName": {
+					"type": "string",
+					"default": "Typography",
+					"description": "The name of the frame containing the text elments demonstrating the different typography styles"
+				},
+				"fileInformation.colorsFrameName": {
+					"type": "string",
+					"default": "Colors",
+					"description": "The name of the frame containing the color examples"
+				},
+				"fileInformation.framesWhiteList": {
+					"type": "string",
+					"default": "",
+					"description": "(optional) A comma-separated list of frame names that will be output to the css. If no values are informed, all frames will be output."
 				}
 			}
 		}

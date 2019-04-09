@@ -10,18 +10,11 @@ export class LessRule {
     // TODO mixins
      
 
-    constructor(selector: string, figmaNode?: any, parent?: LessRule){
+    constructor(selector: string, figmaNode: any){
         this.selector = selector;
-        this.depth = parent ? parent.depth + 1 : 0;
-        // If figma node was passed, parse it
-        if(figmaNode){
-            this.parseNode(figmaNode);
-        }
-        // If node has a parent, add itself as a child
-        if(parent){
-            // This will also set this.parent
-            parent.addChild(this);
-        }
+        this.depth = 0;
+        // Parse the node
+        this.parseNode(figmaNode);
     }
 
     /*
@@ -63,7 +56,7 @@ export class LessRule {
     */
     parseNode(node: any){
         let parser = new Parser(node);
-        this.props = parser.parse();
+        this.props = {...this.props, ...parser.parse()};
     }
 
     /*
