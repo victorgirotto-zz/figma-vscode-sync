@@ -1,21 +1,65 @@
-import { FigmaUtil } from "./figmautil";
+import * as Figma from 'figma-js';
+import { FigmaUtil } from './util/figma-util';
 
+/**
+ * 
+ */
+export type CssProperties = {[prop:string]: string};
+
+/**
+ * 
+ */
+export class FigmaSyncComponent {
+    id: string;
+    name: string;
+    description: string;
+    style: LayerStyle;
+
+    constructor(id:string, name:string, description:string){
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.style = new LayerStyle();
+    }
+
+}
+
+/**
+ * 
+ */
+export class LayerStyle {
+    props: CssProperties = {};
+    children: LayerStyle[] = [];
+
+    /**
+     * Builds a component's style tree based on the figma node passed as parameter.
+     * This tree is a "flattened" version of the component's layer structure in Figma.
+     * By that, I mean that this function will:
+     * 
+     * 
+     * @param node Figma.Node that will be parsed
+     */
+    parseProperties(node: any){
+        this.props = new Parser(node).parse();
+        // this.props = new Parser(node.children[1]).parse(); // This yields some styles
+    }
+}
+
+
+/**
+ * 
+ */
 export class Parser {
-    
     node: any;
 
     constructor(node: any){
         this.node = node;
     }
 
-    px(number:number){
-        return number + 'px';
-    }
-
     /*
         Actives all handlers to parse styles from a Figma node and returns a map of css props -> values
     */
-    parse(): { [string:string]: Object }{
+    parse(): CssProperties{
         let props = {};
         // Go through the props in the node
         for(let prop in this.node){
@@ -27,11 +71,19 @@ export class Parser {
         return props;
     }
 
-    /*
-        Parses a figma node property and returns an object of css properties and values.
-    */
-    handleProp(prop: string): { [string:string]: Object } {
-        let css: { [string:string]: Object } = {};
+    /**
+     * Returns a string with the number + px postfix
+     * @param number Number
+     */
+    px(number:number){
+        return number + 'px';
+    }
+
+    /**
+     * Parses a figma node property and returns an object of css properties and values. 
+     */
+    handleProp(prop: string): CssProperties {
+        let css: CssProperties = {};
         let value = this.node[prop];
         switch (prop) {
             
@@ -45,6 +97,7 @@ export class Parser {
                 break;
 
             case 'fills':
+                
                 var prop = this.node.type === 'TEXT' ? 'color' : 'background-color';
                 // Array of fills {blendMode, type, color(rgba)}
                 for (let i = 0; i < value.length; i++) {
@@ -93,7 +146,4 @@ export class Parser {
         }
         return css;
     }
-
-
-
 }

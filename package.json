@@ -10,54 +10,24 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.figmaToLess"
+		"workspaceContains:*.less"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "extension.figmaToLess",
-				"title": "Generate LESS file from Figma"
+				"command": "figmasync.syncLessFile",
+				"title": "Sync a LESS file to a Figma file"
 			}
 		],
 		"configuration": {
 			"type": "object",
 			"title": "Figma Sync",
 			"properties": {
-				"general.APIKey": {
+				"APIKey": {
 					"type": "string",
 					"default": "",
 					"description": "Your Figma API key"
-				},
-				"general.fileKey": {
-					"type": "string",
-					"default": "",
-					"description": "The key for the file containing your design system"
-				},
-				"general.outFileName": {
-					"type": "string",
-					"default": "",
-					"description": "(optional) The name of the file that will be generated."
-				},
-				"fileInformation.tokensFrameName": {
-					"type": "string",
-					"default": "Tokens",
-					"description": "The name of the frame containing the literal tokens"
-				},
-				"fileInformation.typographyFrameName": {
-					"type": "string",
-					"default": "Typography",
-					"description": "The name of the frame containing the text elments demonstrating the different typography styles"
-				},
-				"fileInformation.colorsFrameName": {
-					"type": "string",
-					"default": "Colors",
-					"description": "The name of the frame containing the color examples"
-				},
-				"fileInformation.framesWhiteList": {
-					"type": "string",
-					"default": "",
-					"description": "(optional) A comma-separated list of frame names that will be output to the css. If no values are informed, all frames will be output."
 				}
 			}
 		}
@@ -77,6 +47,7 @@
 		"@types/mocha": "^2.2.42"
 	},
 	"dependencies": {
-		"figma-js": "^1.6.1"
+		"figma-js": "^1.6.1",
+		"less": "^3.9.0"
 	}
 }
