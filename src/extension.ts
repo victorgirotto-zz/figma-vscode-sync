@@ -216,6 +216,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}, changeWait);
 	};
 
+	context.subscriptions.push(vscode.languages.registerHoverProvider('less', {
+		provideHover(document, position, token){
+			
+			return new vscode.Hover('I am hovering');
+		}
+	}));
+
 	// Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', () => setupFile()));
 

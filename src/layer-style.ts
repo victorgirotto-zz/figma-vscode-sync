@@ -21,7 +21,6 @@ export class FigmaSyncComponent {
         this.description = description;
         this.style = new LayerStyle();
     }
-
 }
 
 /**
