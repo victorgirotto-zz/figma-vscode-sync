@@ -18,8 +18,25 @@
 			{
 				"command": "figmasync.syncLessFile",
 				"title": "Sync a LESS file to a Figma file"
+			},
+			{
+				"command": "figmasync.refreshComponents",
+				"title": "Refresh components",
+				"icon":{
+					"dark": "media/refresh.svg",
+					"light": "media/refresh-light.svg"
+				}
 			}
 		],
+		"menus": {
+			"view/title": [
+				{
+				  "command": "figmasync.refreshComponents",
+				  "when": "view == figmaComponents",
+				  "group": "navigation"
+				}
+			]
+		},
 		"configuration": {
 			"type": "object",
 			"title": "Figma Sync",
@@ -30,7 +47,24 @@
 					"description": "Your Figma API key"
 				}
 			}
-		}
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "figmaSync",
+					"title": "Figma Sync",
+					"icon": "media/figmacomponent.svg"
+				}
+			]
+		},
+		"views": {
+			"figmaSync": [
+				{
+					"id": "figmaComponents",
+					"name": "Figma Components"
+				}
+			]
+		  }
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
