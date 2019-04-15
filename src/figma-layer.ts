@@ -5,7 +5,6 @@ import { CurrentFileUtil } from './util/current-file-util';
 
 export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     
-    // onDidChangeTreeData?: vscode.Event<FigmaLayer | null | undefined> | undefined;    
     private changeTreeDataEmitter: vscode.EventEmitter<FigmaLayer> = new vscode.EventEmitter<FigmaLayer>();
 	readonly onDidChangeTreeData: vscode.Event<FigmaLayer> = this.changeTreeDataEmitter.event;
 
@@ -28,6 +27,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
         if(this.components){
             // There are components. Add them.
             // Create mapping function
+            let meta = this.components.meta;
             let toTreeItem = (component:any)=>{
                 let collapsibleState;
                 if(['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(component.type)){
@@ -35,7 +35,8 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 } else {
                     collapsibleState = vscode.TreeItemCollapsibleState.None;
                 }
-                return new FigmaLayer(component, component.name, collapsibleState, component.type);
+                let description = component.id in meta ? meta[component.id].description : '';
+                return new FigmaLayer(component, component.name, collapsibleState, component.type, description);
             };
     
             // Map the element's children
@@ -46,7 +47,11 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
             let items: FigmaLayer[] = [];
             if(nodes){
                 // Map the nodes to tree items
-                items = nodes.map(c => toTreeItem(c));
+                items = nodes.filter(c => {
+                    return c; // This filtering is necessary to skip components that have been deleted, but which still have instances around the file.
+                }).map(c => {
+                    return toTreeItem(c);
+                });
             }
             return Promise.resolve(items);
         } else {
@@ -71,7 +76,8 @@ export class FigmaLayer extends vscode.TreeItem {
 		public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public type: string,
-		public readonly command?: vscode.Command
+        public moreInformation: string,
+        public readonly command?: vscode.Command
 	) {
         super(label, collapsibleState);
         this.id = node.id;
@@ -80,7 +86,7 @@ export class FigmaLayer extends vscode.TreeItem {
     }
     
     get tooltip(): string {
-        return this.id ? this.id : '';
+        return this.moreInformation ? this.moreInformation : '';
     }
 
     iconPath = {

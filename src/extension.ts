@@ -107,7 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
 				updateStatusBar();
 
 			}).catch(reason => {
-				// Somethign went wrong while retrieving data from Figma
+				// Something went wrong while retrieving data from Figma
 				vscode.window.showErrorMessage(reason.toString());
 			});
 		});
@@ -215,7 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
 			updateStatusBar();
 			refreshSidebar();
 		}
-	}
+	};
 
 	// Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', () => setupFile()));

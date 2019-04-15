@@ -17,15 +17,12 @@ export class FigmaComponents {
         this.meta = data.components;
         this.lastModified = data.lastModified;
 
-        // We have the list of components. Now, find and parse their nodes.
-        for(let componentId in this.meta){
-            
-            // Find node and add it to the list of components
-            let figmaNode = FigmaUtil.getAllChildren(data.document, (node:any) => {
-                return node.type === 'COMPONENT' && node.id === componentId;
-            })[0];
-
-            this.components.push(figmaNode);
-        }
+        // Add children from all pages
+        data.document.children.forEach((p: any) => {
+            this.components.push(...p.children);
+        });
+        
+        // Sort alphabetically
+        this.components.sort((a,b) => a.name.localeCompare(b.name));
     }
 }
