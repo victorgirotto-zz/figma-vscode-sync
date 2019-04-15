@@ -27,19 +27,24 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 
     getChildren(element?: FigmaLayer | undefined): vscode.ProviderResult<FigmaLayer[]> {
         // Check if there are components to be displayed
-        if(this.components){
-            // There are components. Add them.
-            // Create mapping function
+        if(this.components){ // There are components. Add them.
             let meta = this.components.meta;
+            
+            // Create mapping function
             let toTreeItem = (component:any)=>{
+                
+                // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
                 let collapsibleState;
                 if(['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(component.type)){
                     collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
                 } else {
                     collapsibleState = vscode.TreeItemCollapsibleState.None;
                 }
+                
+                // Setup layer information
                 let description = component.id in meta ? meta[component.id].description : '';
                 let link = this.links[component.id];
+                // Create layer item
                 return new FigmaLayer(
                     component, 
                     component.name, 
@@ -50,11 +55,15 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 );
             };
     
-            // Map the element's children
+            // Map the element's children to FigmaLayers
+
+            // First, get the children of the root or of the included component
             let nodes = this.components.components;
             if(element){
                 nodes = element.node.children;
             }
+
+            // Create items
             let items: FigmaLayer[] = [];
             if(nodes){
                 // Map the nodes to tree items
@@ -64,8 +73,11 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                     return toTreeItem(c);
                 }).sort((a,b) => a.label.localeCompare(b.label));
             }
+
+            // Return 
             return Promise.resolve(items);
         } else {
+            
             // There are no components. Check if file type is correct.
             if(CurrentFileUtil.isFileLanguageID('less')){
                 // This is a less file.
