@@ -5,11 +5,18 @@ import { CurrentFileUtil } from './util/current-file-util';
 
 export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     
-    onDidChangeTreeData?: vscode.Event<FigmaLayer | null | undefined> | undefined;    
+    // onDidChangeTreeData?: vscode.Event<FigmaLayer | null | undefined> | undefined;    
+    private changeTreeDataEmitter: vscode.EventEmitter<FigmaLayer> = new vscode.EventEmitter<FigmaLayer>();
+	readonly onDidChangeTreeData: vscode.Event<FigmaLayer> = this.changeTreeDataEmitter.event;
+
     components: FigmaComponents | undefined;
 
     constructor(components?: FigmaComponents){
         this.components = components;
+    }
+
+    refresh(layer?: FigmaLayer){
+        this.changeTreeDataEmitter.fire(layer);
     }
 
     getTreeItem(element: FigmaLayer): vscode.TreeItem | Thenable<vscode.TreeItem> {
@@ -46,7 +53,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
             // There are no components. Check if file type is correct.
             if(CurrentFileUtil.isFileLanguageID('less')){
                 // This is a less file.
-                
+
             } else {
                 // This is not a less file. 
 
@@ -57,6 +64,8 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 
 export class FigmaLayer extends vscode.TreeItem {
 
+    selector: string;
+
     constructor(
         public node: any,
 		public readonly label: string,
@@ -64,11 +73,14 @@ export class FigmaLayer extends vscode.TreeItem {
         public type: string,
 		public readonly command?: vscode.Command
 	) {
-		super(label, collapsibleState);
+        super(label, collapsibleState);
+        this.id = node.id;
+        this.contextValue = this.type;
+        this.selector = '';
     }
     
     get tooltip(): string {
-        return `${this.label}: ${this.type}`;
+        return this.id ? this.id : '';
     }
 
     iconPath = {
@@ -76,6 +88,8 @@ export class FigmaLayer extends vscode.TreeItem {
 		dark: path.join(__filename, '..', '..', 'media', 'sidebar', `${this.type}.svg`)
     };
 
-    contextValue = this.type;
+    setLink(selector: string){
+        this.selector = selector;
+    }
 
 }

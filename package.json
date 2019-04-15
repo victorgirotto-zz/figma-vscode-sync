@@ -26,7 +26,15 @@
 					"dark": "media/refresh.svg",
 					"light": "media/refresh-light.svg"
 				}
-			}
+			},
+			{
+				"command": "figmasync.linkLayer",
+				"title": "Connect Layer",
+				"icon": {
+				  "light": "media/link.svg",
+				  "dark": "media/link.svg"
+				}
+			  }
 		],
 		"menus": {
 			"view/title": [
@@ -34,6 +42,13 @@
 				  "command": "figmasync.refreshComponents",
 				  "when": "view == figmaComponents",
 				  "group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+				  "command": "figmasync.linkLayer",
+				  "when": "view == figmaComponents",
+				  "group": "inline"
 				}
 			]
 		},

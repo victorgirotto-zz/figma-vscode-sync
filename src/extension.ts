@@ -2,14 +2,16 @@ import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaComponents } from './figma-components';
-import { FigmaLayerProvider } from './figma-layer';
+import { FigmaLayerProvider, FigmaLayer } from './figma-layer';
 import { CssUtil } from './util/css-util';
+import { FileStorage } from './util/storage';
 
 const changeWait: number = 1000; // How long we wait before processing a change event
 const fileStoragePrefix: string = `files-`; // Prefix with which the file is stored in memory
-
 let changeTimeout: NodeJS.Timeout;
 let statusBar: vscode.StatusBarItem;
+let figmaLayerProvider: FigmaLayerProvider;
+let fileData: FileStorage;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -36,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 		if (fileURI){
 			const config = vscode.workspace.getConfiguration();
 			const token = apiKey ? apiKey : config.get('APIKey') as string;
-			const fileKey = context.workspaceState.get(fileStoragePrefix + fileURI) as string;
+			const fileKey = fileData.fileKey;
 
 			// Check for the API token
 			if(!token){
@@ -61,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}).then((fileKey) => {
 				if(fileKey){
 					// Store file key
-					context.workspaceState.update(fileStoragePrefix + fileURI, fileKey);
+					fileData.fileKey = fileKey;
 					// Update status bar
 					updateStatusBar();
 					// Create figma structure
@@ -77,44 +79,36 @@ export function activate(context: vscode.ExtensionContext) {
 	 */
 	let createFigmaStructure = function(fileURI: string){
 		// First create the information message
-		vscode.window.withProgress({
-			location: vscode.ProgressLocation.Notification,
-			title: "Getting data from api.figma.com",
-			cancellable: false
-		}, (progress, token) => {
-			// Get data from Figma and parse it
-			return new Promise(resolve => {
-				const token = vscode.workspace.getConfiguration().get('APIKey') as string;
-				const fileKey = context.workspaceState.get(`files-${fileURI}`) as string;
+		statusBar.text = '$(repo-sync) Syncing with api.figma.com';
+		// Get data from Figma and parse it
+		return new Promise(resolve => {
+			const apiKey = vscode.workspace.getConfiguration().get('APIKey') as string;
+			const fileKey = fileData.fileKey;
 
-				// Get file data from API
-				const client = Figma.Client({ personalAccessToken: token });
-				client.file(fileKey).then(({ data }) => {
-					// Retrieve cache if any
-					let figmaComponents = context.workspaceState.get(`components-${fileURI}`) as FigmaComponents;
-					
-					// Check if the there is data and if it's is up to date. If not, parse received data.
-					if(!figmaComponents || data.lastModified !== figmaComponents.lastModified){
-						progress.report({ message: "Data received. Parsing it." });
-						// Add metadata to the workspace data
-						context.workspaceState.update(`files-${fileURI}-name`, data.name);
-						// Update status bar
-						updateStatusBar();
-						// Parse document
-						figmaComponents = new FigmaComponents(data);
-						// Store components
-						context.workspaceState.update(`components-${fileURI}`, figmaComponents);
-					}
+			// Get file data from API
+			const client = Figma.Client({ personalAccessToken: apiKey });
+			client.file(fileKey).then(({ data }) => {
+				// Retrieve cache if any
+				let figmaComponents = fileData.components;
+				
+				// Check if the there is data and if it's is up to date. If not, parse received data.
+				if(!figmaComponents || data.lastModified !== figmaComponents.lastModified){
+					// Add metadata to the workspace data
+					fileData.fileName = data.name;
+					// Parse document
+					figmaComponents = new FigmaComponents(data);
+					// Store components
+					fileData.components = figmaComponents;
+				}
+				
+				// Add sidebar item
+				createTreeView(figmaComponents);
+				// Update status bar
+				updateStatusBar();
 
-					// Add sidebar item
-					createTreeView(figmaComponents);
-					// Clear information message
-					resolve();
-
-				}).catch(reason => {
-					// Somethign went wrong while retrieving data from Figma
-					vscode.window.showErrorMessage(reason.toString());
-				});
+			}).catch(reason => {
+				// Somethign went wrong while retrieving data from Figma
+				vscode.window.showErrorMessage(reason.toString());
 			});
 		});
 	};
@@ -136,7 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	let createTreeView = function(figmaComponents?: FigmaComponents | undefined){
-		vscode.window.registerTreeDataProvider('figmaComponents', new FigmaLayerProvider(figmaComponents));
+		figmaLayerProvider = new FigmaLayerProvider(figmaComponents);
+		vscode.window.registerTreeDataProvider('figmaComponents', figmaLayerProvider);
 	};
 
 	let refreshSidebar = function(){
@@ -144,10 +139,10 @@ export function activate(context: vscode.ExtensionContext) {
 		let documentURI = CurrentFileUtil.getOpenFileURIPath();
 		if(documentURI){
 			// See if it's connected to a figma file
-			let fileKey = context.workspaceState.get(`files-${documentURI}`) as string;
+			let fileKey = fileData.fileKey;
 			if (fileKey){
 				// Get cache structure, if any, and create tree view
-				let figmaComponents = context.workspaceState.get(`components-${documentURI}`) as FigmaComponents;
+				let figmaComponents = fileData.components;
 				createTreeView(figmaComponents);
 				// If there is a file key, Update the structure
 				createFigmaStructure(documentURI);
@@ -158,6 +153,21 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	};
 
+	let removeFigmaSync = function(){
+		// Removes figma sync
+		vscode.window.showQuickPick(['Yes', 'No'], {
+			placeHolder: "Remove the connection between this file and Figma?"	
+		}).then((result: string | undefined) => {
+			if(result && result.toLowerCase() === 'yes'){
+				// Remove files
+				fileData.clearData();
+				// Refresh sidebar and status menu
+				refreshSidebar();
+				updateStatusBar();
+			}	
+		});
+	};
+
 	let updateStatusBar = function(){
 		// Create status bar if it doesn't yet exist
 		if (!statusBar){
@@ -165,8 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		
 		// Check whether this is a LESS file and that it's being tracked
-		let fileURI = CurrentFileUtil.getOpenFileURIPath();
-		let figmaFileKey = context.workspaceState.get(fileStoragePrefix + fileURI);
+		let figmaFileKey = fileData.fileKey;
 		if(!CurrentFileUtil.isFileLanguageID('less')){
 			// It's not a less file or the file is not being synced. Hide the status bar.
 			statusBar.hide();
@@ -174,35 +183,53 @@ export function activate(context: vscode.ExtensionContext) {
 			// It's a less file but no Figma file has been attached
 			statusBar.text = `$(circle-slash) Not connected to Figma`;
 			statusBar.command = 'figmasync.syncLessFile';
+			// Show it
+			statusBar.show();
 		} else {
 			// It's a less file that's being tracked
-			let fileName = context.workspaceState.get(`files-${fileURI}-name`);
-			fileName = fileName ? fileName : figmaFileKey;
-			statusBar.text = `$(check) Figma: ${fileName}`;
+			statusBar.text = `$(check) Figma: ${fileData.fileName}`;
+			statusBar.command = 'figmasync.removeFigmaSync';
 			// Show it
 			statusBar.show();
 		}
 	};
 
+	let linkLayerWithSelector = function(layer: FigmaLayer) {
+		vscode.window.showInputBox({
+			prompt: `Enter the selector you want to link with layer "${layer.label}"`,
+			placeHolder: 'selector'
+		}).then((selector:string|undefined) => {
+			if(selector){
+				layer.description = selector;
+				figmaLayerProvider.refresh(layer);
+			}
+		});
+	};
+
+	let handleChangeFile = function(){
+		let uri = CurrentFileUtil.getOpenFileURIPath();
+		if(uri){
+			// Select data storage
+			fileData = new FileStorage(uri, context);
+			// Update UI
+			updateStatusBar();
+			refreshSidebar();
+		}
+	}
+
 	// Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', () => setupFile()));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', () => refreshSidebar()));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', () => removeFigmaSync()));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayerWithSelector));
 
 	// Event handlers
 	vscode.workspace.onDidChangeTextDocument(event => handleDocumentChange(event));
-	vscode.window.onDidChangeActiveTextEditor((editor:vscode.TextEditor | undefined) => { refreshSidebar(); });
+	vscode.window.onDidChangeActiveTextEditor(handleChangeFile);
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
-	context.subscriptions.push(vscode.languages.registerHoverProvider('less', {
-		provideHover(document, position, token){
-			let hoveredToken = CssUtil.extractToken(position.line);
-			console.log(JSON.stringify(hoveredToken, null, 2));
-			return new vscode.Hover(new vscode.MarkdownString(JSON.stringify(hoveredToken, null, 2)));
-		}
-	}));
 
 	// Run initial functions
-	updateStatusBar();
-	refreshSidebar();
+	handleChangeFile();
 
 }
 
