@@ -130,7 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	let createTreeView = function(figmaComponents?: FigmaComponents | undefined){
-		figmaLayerProvider = new FigmaLayerProvider(figmaComponents);
+		let links = fileData.links;
+		figmaLayerProvider = new FigmaLayerProvider(figmaComponents, links);
 		vscode.window.registerTreeDataProvider('figmaComponents', figmaLayerProvider);
 	};
 
@@ -200,7 +201,9 @@ export function activate(context: vscode.ExtensionContext) {
 			placeHolder: 'selector'
 		}).then((selector:string|undefined) => {
 			if(selector){
-				layer.description = selector;
+				// Set the link, store it, and refresh the view
+				layer.setLink(selector);
+				fileData.addLink(layer.id, selector);
 				figmaLayerProvider.refresh(layer);
 			}
 		});
