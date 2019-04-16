@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { FigmaComponents } from '../figma-components';
-import { FigmaLayer } from '../figma-layer';
+import { FigmaLayer } from '../figmalayer';
 import { StylesheetScope } from './stylesheet';
 
 export type LinksMap = { [layerId:string]: LayerSelectorLink };

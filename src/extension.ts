@@ -3,7 +3,7 @@ import * as Figma from 'figma-js';
 import * as path from 'path';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaComponents } from './figma-components';
-import { FigmaLayerProvider, FigmaLayer } from './figma-layer';
+import { FigmaLayerProvider, FigmaLayer } from './figmalayer';
 import { CssUtil } from './util/css-util';
 import { FileStorage, LayerSelectorLink } from './util/storage';
 import { Stylesheet, StylesheetScope } from './util/stylesheet';
@@ -70,9 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 					// Store file key
 					fileData.fileKey = fileKey;
 					// Update status bar
-					updateStatusBar();
-					// Create figma structure
-					createFigmaStructure(fileURI);
+					switchContextToCurrentFile();
 				}
 			});
 		}
@@ -205,38 +203,38 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param layer 
 	 */
 	let linkLayerWithSelector = function(layer: FigmaLayer) {
-		let existingLink = layer.linkedSelector;
+		// let existingLink = layer.linkedSelector;
 
 		// Ask user what selector they want to link this layer with
-		vscode.window.showInputBox({
-			prompt: `Enter the selector you want to link with layer "${layer.label}"`,
-			placeHolder: 'selector',
-			value: existingLink
-		}).then((selector:string|undefined) => {
+		// vscode.window.showInputBox({
+		// 	prompt: `Enter the selector you want to link with layer "${layer.label}"`,
+		// 	placeHolder: 'selector',
+		// 	value: existingLink
+		// }).then((selector:string|undefined) => {
 			// Set or remove the layer link
-			if(layer.id){
-				if(!selector){
-					// Remove link from layers
-					layer.removeLinks();
-					fileData.removeLinks(layer.id);
-					figmaLayerProvider.refresh(layer);
-					// Remove decoration
-					removeCodeDecoration(layer.id);
+			// if(layer.id){
+			// 	if(!selector){
+			// 		// Remove link from layers
+			// 		layer.removeLinks();
+			// 		fileData.removeLinks(layer.id);
+			// 		figmaLayerProvider.refresh(layer);
+			// 		// Remove decoration
+			// 		removeCodeDecoration(layer.id);
 
-				} else {
-					let scope = stylesheet.getScope(selector);
-					if(scope){ // Make sure the scope exists
-						// Set the link, store it, and refresh the view
-						let link = new LayerSelectorLink(layer, scope);
-						layer.setLink(link.selector);
-						fileData.addLink(link);
-						figmaLayerProvider.refresh(layer);
-						// Add code decorations
-						addCodeDecoration(link);
-					}
-				}
-			}
-		});
+			// 	} else {
+			// 		let scope = stylesheet.getScope(selector);
+			// 		if(scope){ // Make sure the scope exists
+			// 			// Set the link, store it, and refresh the view
+			// 			let link = new LayerSelectorLink(layer, scope);
+			// 			layer.setLink(link.selector);
+			// 			fileData.addLink(link);
+			// 			figmaLayerProvider.refresh(layer);
+			// 			// Add code decorations
+			// 			addCodeDecoration(link);
+			// 		}
+			// 	}
+			// }
+		// });
 	};
 
 	/**
@@ -328,7 +326,7 @@ export function activate(context: vscode.ExtensionContext) {
 	/**
 	 * Refreshes everything to the starting point of a freshly opened file.
 	 */
-	let refreshAll = function(){
+	let switchContextToCurrentFile = function(){
 		let uri = CurrentFileUtil.getOpenFileURIPath();
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(uri && editor){
@@ -346,16 +344,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', refreshAll));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', switchContextToCurrentFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayerWithSelector));
 
 	// Event handlers
 	vscode.workspace.onDidChangeTextDocument(event => handleDocumentChange(event));
-	vscode.window.onDidChangeActiveTextEditor(refreshAll);
+	vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile);
 
 	// Reset everything
-	refreshAll();
+	switchContextToCurrentFile();
 }
 
 export function deactivate() {}

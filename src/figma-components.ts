@@ -1,10 +1,12 @@
 import * as Figma from 'figma-js';
 import { FigmaUtil } from './util/figma-util';
 
+export type ComponentsMeta = {[key:string]: Figma.Component};
+
 export class FigmaComponents {
 
     lastModified: string;
-    meta: {[key:string]: Figma.Component};
+    meta: ComponentsMeta;
     components: any[] = [];
 
     /**
