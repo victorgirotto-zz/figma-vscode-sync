@@ -1,7 +1,24 @@
 import * as vscode from 'vscode';
 import { FigmaComponents } from '../figma-components';
+import { FigmaLayer } from '../figma-layer';
+import { StylesheetScope } from './stylesheet';
 
-export type Links = { [layerId:string]: string };
+export type LinksMap = { [layerId:string]: LayerSelectorLink };
+
+export class LayerSelectorLink {
+
+    public layerId: string;
+    public layerPath: string[];
+    public selector: string;
+
+    constructor(layer: FigmaLayer, scope: StylesheetScope){
+        let id = layer.id ? layer.id : '';
+        this.layerId = id;
+        this.layerPath = layer.path;
+        this.selector = scope.selector;
+    }
+
+}
 
 export class FileStorage {
 
@@ -37,17 +54,25 @@ export class FileStorage {
         return this.context.workspaceState.get(`components-${this.uri}`) as FigmaComponents;
     }
 
-    addLink(layerId: string, cssSelector:string){
+    addLink(link: LayerSelectorLink){
         // Get current links
         let links = this.links;
         // Add the new link
-        links[layerId] = cssSelector;
+        links[link.layerId] = link;
         // Update storage value
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
 
-    get links(): Links{
-        let links = this.context.workspaceState.get(`links-${this.uri}`) as Links;
+    removeLinks(layerId: string){
+        let links = this.links;
+        // Delete links for this layer
+        delete links[layerId];
+        // Update storage value
+        this.context.workspaceState.update(`links-${this.uri}`, links);
+    }
+
+    get links(): LinksMap{
+        let links = this.context.workspaceState.get(`links-${this.uri}`) as LinksMap;
         if(!links){
             links = {};
         }
@@ -58,6 +83,7 @@ export class FileStorage {
         this.context.workspaceState.update(`filename-${this.uri}`, undefined);
         this.context.workspaceState.update(`filekey-${this.uri}`, undefined);
         this.context.workspaceState.update(`components-${this.uri}`, undefined);
+        this.context.workspaceState.update(`links-${this.uri}`, undefined);
     }
 
 }

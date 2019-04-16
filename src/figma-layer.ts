@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { FigmaComponents } from './figma-components';
 import { CurrentFileUtil } from './util/current-file-util';
-import { Links } from './util/storage';
+import { LinksMap } from './util/storage';
 
 export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     
@@ -10,9 +10,9 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 	readonly onDidChangeTreeData: vscode.Event<FigmaLayer> = this.changeTreeDataEmitter.event;
 
     components: FigmaComponents | undefined;
-    links: Links;
+    links: LinksMap;
 
-    constructor(components?: FigmaComponents, links?: Links){
+    constructor(components?: FigmaComponents, links?: LinksMap){
         this.components = components;
         this.links = links ? links : {};
     }
@@ -50,15 +50,17 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 let description = component.id in meta ? meta[component.id].description : '';
                 let link = this.links[component.id];
                 // Create layer item
-                return new FigmaLayer(
+                let layer = new FigmaLayer(
                     component, 
                     component.name, 
                     parent,
                     collapsibleState, 
                     component.type, 
                     description,
-                    link
+                    link ? link.selector : ''
                 );
+                // Return it
+                return layer;
             };
     
             // Map the element's children to FigmaLayers
@@ -103,7 +105,7 @@ export class FigmaLayer extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public type: string,
         public moreInformation: string,
-        public link: string,
+        public linkedSelector: string,
         public readonly command?: vscode.Command
 	) {
         super(label, collapsibleState);
@@ -116,16 +118,24 @@ export class FigmaLayer extends vscode.TreeItem {
     }
 
     get description(): string {
-        return this.link;
+        return this.linkedSelector;
+    }
+
+    private get iconFolder(): string {
+        return this.linkedSelector ? 'Active' : 'Inactive';
     }
 
     iconPath = {
-        light: path.join(__filename, '..', '..', 'media', 'sidebar', `${this.type}.svg`),
-		dark: path.join(__filename, '..', '..', 'media', 'sidebar', `${this.type}.svg`)
+        light: path.join(__filename, '..', '..', 'media', 'sidebar', this.iconFolder, `${this.type}.svg`),
+		dark: path.join(__filename, '..', '..', 'media', 'sidebar', this.iconFolder, `${this.type}.svg`)
     };
 
     setLink(selector: string){
-        this.link = selector;
+        this.linkedSelector = selector;
+    }
+
+    removeLinks(){
+        this.linkedSelector = '';
     }
 
     get path(): string[] {

@@ -5,15 +5,18 @@ import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaComponents } from './figma-components';
 import { FigmaLayerProvider, FigmaLayer } from './figma-layer';
 import { CssUtil } from './util/css-util';
-import { FileStorage } from './util/storage';
+import { FileStorage, LayerSelectorLink } from './util/storage';
 import { Stylesheet, StylesheetScope } from './util/stylesheet';
 
 const changeWait: number = 1000; // How long we wait before processing a change event
 let changeTimeout: NodeJS.Timeout;
 let statusBar: vscode.StatusBarItem;
-let figmaLayerProvider: FigmaLayerProvider;
-let fileData: FileStorage;
-let stylesheet: Stylesheet;
+
+// Current file state
+let fileData: FileStorage; // for persisting and retrieving data
+let stylesheet: Stylesheet; // Represents the style scopes in the current file
+let figmaLayerProvider: FigmaLayerProvider; // Represents the sidebar
+let decorations: {[layerId:string] : vscode.TextEditorDecorationType} = {};
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -137,7 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.registerTreeDataProvider('figmaComponents', figmaLayerProvider);
 	};
 
-	let refreshSidebar = function(){
+	let updateSidebar = function(){
 		// Get document
 		let documentURI = CurrentFileUtil.getOpenFileURIPath();
 		if(documentURI){
@@ -165,7 +168,7 @@ export function activate(context: vscode.ExtensionContext) {
 				// Remove files
 				fileData.clearData();
 				// Refresh sidebar and status menu
-				refreshSidebar();
+				updateSidebar();
 				updateStatusBar();
 			}	
 		});
@@ -202,27 +205,58 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param layer 
 	 */
 	let linkLayerWithSelector = function(layer: FigmaLayer) {
+		let existingLink = layer.linkedSelector;
+
+		// Ask user what selector they want to link this layer with
 		vscode.window.showInputBox({
 			prompt: `Enter the selector you want to link with layer "${layer.label}"`,
-			placeHolder: 'selector'
+			placeHolder: 'selector',
+			value: existingLink
 		}).then((selector:string|undefined) => {
-			if(selector && layer.id){
-				// Set the link, store it, and refresh the view
-				layer.setLink(selector);
-				// fileData.addLink(layer.id, selector);
-				figmaLayerProvider.refresh(layer);
-				// Add code decorations
-				addCodeDecoration(layer, selector);
+			// Set or remove the layer link
+			if(layer.id){
+				if(!selector){
+					// Remove link from layers
+					layer.removeLinks();
+					fileData.removeLinks(layer.id);
+					figmaLayerProvider.refresh(layer);
+					// Remove decoration
+					removeCodeDecoration(layer.id);
+
+				} else {
+					let scope = stylesheet.getScope(selector);
+					if(scope){ // Make sure the scope exists
+						// Set the link, store it, and refresh the view
+						let link = new LayerSelectorLink(layer, scope);
+						layer.setLink(link.selector);
+						fileData.addLink(link);
+						figmaLayerProvider.refresh(layer);
+						// Add code decorations
+						addCodeDecoration(link);
+					}
+				}
 			}
 		});
 	};
 
 	/**
-	 * 
-	 * @param layerId 
-	 * @param selector 
+	 * Removes a code decoration for a figma layer
+	 * @param layer 
 	 */
-	let addCodeDecoration = function(layer:FigmaLayer, selector:string){
+	let removeCodeDecoration = function(layerId:string){
+		if(layerId in decorations){
+			let decoration = decorations[layerId];
+			decoration.dispose();
+			delete decorations[layerId];
+		}
+	};
+
+	/**
+	 * 
+	 * @param layer 
+	 */
+	let addCodeDecoration = function(link:LayerSelectorLink){
+		let selector = link.selector;
 		let scope = stylesheet.getScope(selector);
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(scope && editor){
@@ -230,17 +264,44 @@ export function activate(context: vscode.ExtensionContext) {
 			let range = scope.ranges[selector];
 
 			// Create layer path for hover information
+			let layerPath = link.layerPath;
 			let hoverMessageMarkdown = new vscode.MarkdownString(
 				'**Linked with Figma layer:**\n' + 
-				layer.path.map((val, i) => {
-					let boldPadding = i+1 === layer.path.length ? '**' : '';
+				layerPath.map((val, i) => {
+					let boldPadding = i+1 === layerPath.length ? '**' : '';
 					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
 				}).join('\n')
 			);
 
 			// Create decoration
 			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
-			editor.setDecorations(getLinkedLayerDecoration(), options);
+			const decorationType = getLinkedLayerDecoration();
+			decorations[link.layerId] = decorationType;
+			editor.setDecorations(decorationType, options);
+		}
+	};
+
+	/**
+	 * Adds all code decorations for all existing links
+	 */
+	let UpdateAllCodeDecorations = function(){
+		// Remove all existing decorations
+		removeAllCodeDecorations();
+		
+		// Adds all other decorations
+		let links = fileData.links;
+		for(let layerId in links){
+			let link = links[layerId];
+			addCodeDecoration(link);
+		}
+	};
+
+	/**
+	 * Removes all code decorations
+	 */
+	let removeAllCodeDecorations = function(){
+		for(let layerId in decorations){
+			removeCodeDecoration(layerId);
 		}
 	};
 
@@ -265,10 +326,9 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * This method is called when the user switches to a different file in the editor
-	 * It updates the context in which the other functions operate on (e.g. fileData, refresh the sidebar, etc.);
+	 * Refreshes everything to the starting point of a freshly opened file.
 	 */
-	let handleSwitchEditorFile = function(){
+	let refreshAll = function(){
 		let uri = CurrentFileUtil.getOpenFileURIPath();
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(uri && editor){
@@ -276,26 +336,26 @@ export function activate(context: vscode.ExtensionContext) {
 			fileData = new FileStorage(uri, context);
 			// Switch document representation
 			stylesheet = new Stylesheet(editor, context);
+
 			// Update UI
 			updateStatusBar();
-			refreshSidebar();
+			updateSidebar();
+			UpdateAllCodeDecorations();
 		}
 	};
 
 	// Commands
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', () => setupFile()));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', () => refreshSidebar()));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', () => removeFigmaSync()));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', refreshAll));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayerWithSelector));
 
 	// Event handlers
 	vscode.workspace.onDidChangeTextDocument(event => handleDocumentChange(event));
-	vscode.window.onDidChangeActiveTextEditor(handleSwitchEditorFile);
-	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
+	vscode.window.onDidChangeActiveTextEditor(refreshAll);
 
-	// Run initial functions
-	handleSwitchEditorFile();
-
+	// Reset everything
+	refreshAll();
 }
 
 export function deactivate() {}

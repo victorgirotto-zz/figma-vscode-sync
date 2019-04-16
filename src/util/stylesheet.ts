@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as postcss from 'postcss';
-import { Links } from './storage';
 
 export type CssProperties = {[prop:string]: string};
 const globalRules = ['body', 'html', '*', ':root'];
