@@ -55,6 +55,19 @@ export class FileStorage {
         return links;
     }
 
+    /*
+        Gets the links between layers and selectors mapped by selector.
+    */
+    getLinksBySelector(): Links {
+        let links = this.links;
+        let linksBySelector: Links = {};
+        for(let layerId in links){
+            let selector = links[layerId];
+            linksBySelector[selector] = layerId;
+        }
+        return linksBySelector;
+    }
+
     clearData(){
         this.context.workspaceState.update(`filename-${this.uri}`, undefined);
         this.context.workspaceState.update(`filekey-${this.uri}`, undefined);

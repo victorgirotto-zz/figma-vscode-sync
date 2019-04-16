@@ -56,7 +56,6 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
             };
     
             // Map the element's children to FigmaLayers
-
             // First, get the children of the root or of the included component
             let nodes = this.components.components;
             if(element){
@@ -73,11 +72,9 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                     return toTreeItem(c);
                 }).sort((a,b) => a.label.localeCompare(b.label));
             }
-
-            // Return 
             return Promise.resolve(items);
+
         } else {
-            
             // There are no components. Check if file type is correct.
             if(CurrentFileUtil.isFileLanguageID('less')){
                 // This is a less file.

@@ -1,10 +1,6 @@
 import * as Figma from 'figma-js';
 import { FigmaUtil } from './util/figma-util';
-
-/**
- * 
- */
-export type CssProperties = {[prop:string]: string};
+import { CssProperties } from './util/stylesheet';
 
 /**
  * 

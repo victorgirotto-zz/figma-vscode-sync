@@ -5,13 +5,15 @@ import { FigmaComponents } from './figma-components';
 import { FigmaLayerProvider, FigmaLayer } from './figma-layer';
 import { CssUtil } from './util/css-util';
 import { FileStorage } from './util/storage';
+import { Stylesheet } from './util/stylesheet';
+import { Style } from 'figma-js';
 
 const changeWait: number = 1000; // How long we wait before processing a change event
-const fileStoragePrefix: string = `files-`; // Prefix with which the file is stored in memory
 let changeTimeout: NodeJS.Timeout;
 let statusBar: vscode.StatusBarItem;
 let figmaLayerProvider: FigmaLayerProvider;
 let fileData: FileStorage;
+let stylesheet: Stylesheet;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -205,15 +207,23 @@ export function activate(context: vscode.ExtensionContext) {
 				layer.setLink(selector);
 				fileData.addLink(layer.id, selector);
 				figmaLayerProvider.refresh(layer);
+				// Add code decorations
 			}
 		});
 	};
 
-	let handleChangeFile = function(){
+	/**
+	 * This method is called when the user switches to a different file in the editor
+	 * It updates the context in which the other functions operate on (e.g. fileData, refresh the sidebar, etc.);
+	 */
+	let handleSwitchEditorFile = function(){
 		let uri = CurrentFileUtil.getOpenFileURIPath();
-		if(uri){
+		let editor = CurrentFileUtil.getCurrentFile();
+		if(uri && editor){
 			// Select data storage
 			fileData = new FileStorage(uri, context);
+			// Switch document representation
+			stylesheet = new Stylesheet(editor, context);
 			// Update UI
 			updateStatusBar();
 			refreshSidebar();
@@ -228,11 +238,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Event handlers
 	vscode.workspace.onDidChangeTextDocument(event => handleDocumentChange(event));
-	vscode.window.onDidChangeActiveTextEditor(handleChangeFile);
+	vscode.window.onDidChangeActiveTextEditor(handleSwitchEditorFile);
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
 
 	// Run initial functions
-	handleChangeFile();
+	handleSwitchEditorFile();
 
 }
 
