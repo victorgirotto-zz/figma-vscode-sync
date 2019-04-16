@@ -25,13 +25,18 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
         return element;
     }
 
-    getChildren(element?: FigmaLayer | undefined): vscode.ProviderResult<FigmaLayer[]> {
+    getParent(element: FigmaLayer){
+        return element.parent;
+    }
+
+    getChildren(element?: FigmaLayer): vscode.ProviderResult<FigmaLayer[]> {
+        let parent: FigmaLayer | undefined = undefined;
         // Check if there are components to be displayed
         if(this.components){ // There are components. Add them.
             let meta = this.components.meta;
             
             // Create mapping function
-            let toTreeItem = (component:any)=>{
+            let toTreeItem = (component:any, parent: FigmaLayer | undefined)=>{
                 
                 // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
                 let collapsibleState;
@@ -48,6 +53,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 return new FigmaLayer(
                     component, 
                     component.name, 
+                    parent,
                     collapsibleState, 
                     component.type, 
                     description,
@@ -59,6 +65,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
             // First, get the children of the root or of the included component
             let nodes = this.components.components;
             if(element){
+                parent = element;
                 nodes = element.node.children;
             }
 
@@ -69,7 +76,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 items = nodes.filter(c => {
                     return c; // This filtering is necessary to skip components that have been deleted, but which still have instances around the file.
                 }).map(c => {
-                    return toTreeItem(c);
+                    return toTreeItem(c, parent);
                 }).sort((a,b) => a.label.localeCompare(b.label));
             }
             return Promise.resolve(items);
@@ -91,7 +98,8 @@ export class FigmaLayer extends vscode.TreeItem {
 
     constructor(
         public node: any,
-		public readonly label: string,
+        public readonly label: string,
+        public parent: FigmaLayer | undefined,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public type: string,
         public moreInformation: string,
@@ -118,6 +126,15 @@ export class FigmaLayer extends vscode.TreeItem {
 
     setLink(selector: string){
         this.link = selector;
+    }
+
+    get path(): string[] {
+        // If this is the root, return only its own label
+        if(!this.parent){
+            return [this.label];
+        }
+        // Otherwise, return this label preceded by the parent's path
+        return [...this.parent.path, this.label];
     }
 
 }

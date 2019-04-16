@@ -212,7 +212,7 @@ export function activate(context: vscode.ExtensionContext) {
 				// fileData.addLink(layer.id, selector);
 				figmaLayerProvider.refresh(layer);
 				// Add code decorations
-				addCodeDecoration(layer.label, selector);
+				addCodeDecoration(layer, selector);
 			}
 		});
 	};
@@ -222,24 +222,46 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param layerId 
 	 * @param selector 
 	 */
-	let addCodeDecoration = function(layerId:string, selector:string){
-		console.log(`Looking for scope ${selector}...`);
+	let addCodeDecoration = function(layer:FigmaLayer, selector:string){
 		let scope = stylesheet.getScope(selector);
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(scope && editor){
+			// Create range object
 			let range = scope.ranges[selector];
-			const decoration = vscode.window.createTextEditorDecorationType({
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: '#7C62FF',
-				backgroundColor: 'rgba(124, 98, 255, 0.1)',
-				overviewRulerColor: '#7C62FF',
-				overviewRulerLane: vscode.OverviewRulerLane.Left,
-				gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`)
-			});
-			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: layerId }];
-			editor.setDecorations(decoration, options);
+
+			// Create layer path for hover information
+			let hoverMessageMarkdown = new vscode.MarkdownString(
+				'**Linked with Figma layer:**\n' + 
+				layer.path.map((val, i) => {
+					let boldPadding = i+1 === layer.path.length ? '**' : '';
+					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
+				}).join('\n')
+			);
+
+			// Create decoration
+			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
+			editor.setDecorations(getLinkedLayerDecoration(), options);
 		}
+	};
+
+	/**
+	 * Gets the code decoration styles for selectors linked with a Figma layer
+	 */
+	let getLinkedLayerDecoration = function(): vscode.TextEditorDecorationType {
+		return vscode.window.createTextEditorDecorationType({
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: '#7C62FF',
+			isWholeLine: false,
+			backgroundColor: 'rgba(124, 98, 255, 0.1)',
+			overviewRulerColor: '#7C62FF',
+			overviewRulerLane: vscode.OverviewRulerLane.Left,
+			gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`),
+			gutterIconSize: 'auto',
+			borderRadius: '5px',
+			borderSpacing: '3px',
+			fontWeight: 'bolder',
+		});
 	};
 
 	/**

@@ -69,7 +69,8 @@ export class Stylesheet {
                     // Add the new scope to its parent's children
                     scope.children.push(newScope);
                     // Add the selector to the range mapping
-                    newScope.addRange(selector, node);
+                    let range = this.getRange(node);
+                    newScope.addRange(selector, range);
                 }
                 
                 // If this node has children, process them
@@ -108,6 +109,56 @@ export class Stylesheet {
         }
         
         // Didn't find anything.
+        return undefined;
+    }
+
+    /**
+     * Based on the start position and token type, this method looks for the 
+     * end character of the token and returns its position. If there is no end, returns undefined.
+     * @param type 
+     * @param startRange 
+     */
+    private getRange(node: postcss.ChildNode): vscode.Range | undefined {    
+        if(node.source && node.source.start){
+            let startPosition = new vscode.Position(node.source.start.line-1, node.source.start.column-1);
+    
+            // Get target character based on the token type
+            let targetChar = ((targetType:string) => {
+                switch(targetType){
+                    case 'rule':
+                        return '{';
+                    default:
+                        return ';';
+                }
+            })(node.type);
+    
+            // // Search for it
+            let lineNumber = startPosition.line;
+            let colNumber = startPosition.character;
+            let nonWSColNumber = colNumber; // Keeps track of the latest non whitepsace character in the line
+            do {
+                let lineText = this.editor.document.lineAt(lineNumber).text;
+                // Search within the line
+                while(colNumber < lineText.length){
+                    // Check if character is the correct one
+                    if(lineText[colNumber] === targetChar){
+                        // Found the character. Return the position
+                        let endPosition = new vscode.Position(lineNumber, nonWSColNumber);
+                        return new vscode.Range(startPosition, endPosition);
+                    }
+                    // Update non whitespace column number
+                    if(/\s/.test(lineText[colNumber])){
+                        nonWSColNumber = colNumber;
+                    }
+                    // Increment column number
+                    colNumber++;
+                }
+            
+                // Line ended and still haven't found it. Look in the next line.
+                lineNumber++;
+                colNumber = 0;
+            } while(lineNumber < this.editor.document.lineCount);
+        }
         return undefined;
     }
 
@@ -177,19 +228,11 @@ export class StylesheetScope {
     /**
      * Adds a mapping of document ranges for each part of the scope (variables, props, selector, etc.)
      * @param node 
+     * @param range
      */
-    addRange(key: string, node: postcss.ChildNode){
-        if(key === '.button'){
-            console.log(node);
+    addRange(key: string, range?: vscode.Range){
+        if(range){
+            this.ranges[key] = range;
         }
-        // Check if node has all needed properties
-        if(node.source && node.source.start && node.source.end){
-            // Create range and add it to scope
-            let start = new vscode.Position(node.source.start.line-1, node.source.start.column-1);
-            // TODO handle multiline selectors
-            let end = new vscode.Position(node.source.start.line, node.source.end.column-1);
-            this.ranges[key] = new vscode.Range(start, end);
-        }
-
     }
 }
