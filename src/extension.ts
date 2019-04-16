@@ -231,9 +231,9 @@ export function activate(context: vscode.ExtensionContext) {
 			const decoration = vscode.window.createTextEditorDecorationType({
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: 'purple',
-				backgroundColor: 'rgba(128, 0, 128, 0.2)',
-				overviewRulerColor: 'purple',
+				borderColor: '#7C62FF',
+				backgroundColor: 'rgba(124, 98, 255, 0.1)',
+				overviewRulerColor: '#7C62FF',
 				overviewRulerLane: vscode.OverviewRulerLane.Left,
 				gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`)
 			});
