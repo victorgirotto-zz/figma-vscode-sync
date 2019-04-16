@@ -37,12 +37,11 @@ export class FileStorage {
         return this.context.workspaceState.get(`components-${this.uri}`) as FigmaComponents;
     }
 
-    addLink(layerId: string | undefined, cssSelector:string){
+    addLink(layerId: string, cssSelector:string){
         // Get current links
         let links = this.links;
-        if(layerId){
-            links[layerId] = cssSelector;
-        }
+        // Add the new link
+        links[layerId] = cssSelector;
         // Update storage value
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
@@ -53,19 +52,6 @@ export class FileStorage {
             links = {};
         }
         return links;
-    }
-
-    /*
-        Gets the links between layers and selectors mapped by selector.
-    */
-    getLinksBySelector(): Links {
-        let links = this.links;
-        let linksBySelector: Links = {};
-        for(let layerId in links){
-            let selector = links[layerId];
-            linksBySelector[selector] = layerId;
-        }
-        return linksBySelector;
     }
 
     clearData(){

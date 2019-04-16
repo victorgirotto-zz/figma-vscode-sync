@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
+import * as path from 'path';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaComponents } from './figma-components';
 import { FigmaLayerProvider, FigmaLayer } from './figma-layer';
 import { CssUtil } from './util/css-util';
 import { FileStorage } from './util/storage';
-import { Stylesheet } from './util/stylesheet';
-import { Style } from 'figma-js';
+import { Stylesheet, StylesheetScope } from './util/stylesheet';
 
 const changeWait: number = 1000; // How long we wait before processing a change event
 let changeTimeout: NodeJS.Timeout;
@@ -197,19 +197,49 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	};
 
+	/**
+	 * 
+	 * @param layer 
+	 */
 	let linkLayerWithSelector = function(layer: FigmaLayer) {
 		vscode.window.showInputBox({
 			prompt: `Enter the selector you want to link with layer "${layer.label}"`,
 			placeHolder: 'selector'
 		}).then((selector:string|undefined) => {
-			if(selector){
+			if(selector && layer.id){
 				// Set the link, store it, and refresh the view
 				layer.setLink(selector);
-				fileData.addLink(layer.id, selector);
+				// fileData.addLink(layer.id, selector);
 				figmaLayerProvider.refresh(layer);
 				// Add code decorations
+				addCodeDecoration(layer.label, selector);
 			}
 		});
+	};
+
+	/**
+	 * 
+	 * @param layerId 
+	 * @param selector 
+	 */
+	let addCodeDecoration = function(layerId:string, selector:string){
+		console.log(`Looking for scope ${selector}...`);
+		let scope = stylesheet.getScope(selector);
+		let editor = CurrentFileUtil.getCurrentFile();
+		if(scope && editor){
+			let range = scope.ranges[selector];
+			const decoration = vscode.window.createTextEditorDecorationType({
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'purple',
+				backgroundColor: 'rgba(128, 0, 128, 0.2)',
+				overviewRulerColor: 'purple',
+				overviewRulerLane: vscode.OverviewRulerLane.Left,
+				gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`)
+			});
+			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: layerId }];
+			editor.setDecorations(decoration, options);
+		}
 	};
 
 	/**

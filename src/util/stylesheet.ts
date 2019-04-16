@@ -18,6 +18,8 @@ export class Stylesheet {
         this.text = this.editor.document.getText();
         this.baseScope = new StylesheetScope('body');
         this.version = this.editor.document.version;
+        
+        // Parse the file
         this.parseFile();
     }
 
@@ -80,8 +82,9 @@ export class Stylesheet {
      * 
      * @param selector 
      */
-    getScope(selector: string){
-        return this._getScope(selector, this.baseScope);
+    getScope(selector: string): StylesheetScope | undefined{
+        let scope = this._getScope(selector, this.baseScope);
+        return scope;
     }
 
     /**
@@ -89,22 +92,23 @@ export class Stylesheet {
      * @param selector 
      * @param scope 
      */
-    private _getScope(selector: string, scope: StylesheetScope): StylesheetScope | undefined{
+    private _getScope(selector: string, scope: StylesheetScope): StylesheetScope | undefined {
         // Check if this scope is the desired one
         if(scope.selector === selector){
             return scope;
         }
         
         // This is not the right scope. Look at it's children;
-        scope.children.forEach(childScope => {
+        for(let i = 0; i < scope.children.length; i++) {
+            let childScope = scope.children[i];
             let result = this._getScope(selector, childScope);
             if(result){
                 return result;
             }
-        });
+        }
         
         // Didn't find anything.
-        return;
+        return undefined;
     }
 
 }
@@ -114,7 +118,7 @@ export class StylesheetScope {
     props: CssProperties;
     variables: CssProperties;
     children: StylesheetScope[];
-    ranges: {[key:string]: {}};
+    ranges: {[key:string]: vscode.Range};
 
     /**
      * 
@@ -175,11 +179,15 @@ export class StylesheetScope {
      * @param node 
      */
     addRange(key: string, node: postcss.ChildNode){
+        if(key === '.button'){
+            console.log(node);
+        }
         // Check if node has all needed properties
         if(node.source && node.source.start && node.source.end){
             // Create range and add it to scope
-            let start = new vscode.Position(node.source.start.line, node.source.start.column);
-            let end = new vscode.Position(node.source.end.line, node.source.end.column);
+            let start = new vscode.Position(node.source.start.line-1, node.source.start.column-1);
+            // TODO handle multiline selectors
+            let end = new vscode.Position(node.source.start.line, node.source.end.column-1);
             this.ranges[key] = new vscode.Range(start, end);
         }
 
