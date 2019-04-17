@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { FigmaFile, ComponentsMeta } from './figma-components';
-import { LinksMap } from './util/storage';
-
+import { FigmaFile, ComponentsMeta } from './figmafile';
+import { LinksMap, LayerSelectorLink } from './link';
 
 /**
  * Represents a Figma layer
@@ -55,7 +54,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     private changeTreeDataEmitter: vscode.EventEmitter<FigmaLayer> = new vscode.EventEmitter<FigmaLayer>();
 	readonly onDidChangeTreeData: vscode.Event<FigmaLayer> = this.changeTreeDataEmitter.event;
 
-    links: LinksMap;
+    links!: LinksMap;
     treeItems: {[nodeId: string]: FigmaLayer}; // Direct access to any layer by ID
     rootItems: FigmaLayer[]; // List of root layers
 
@@ -65,16 +64,32 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param links 
      */
     constructor(components?: FigmaFile, links?: LinksMap){
-        this.links = links ? links : {};
         this.treeItems = {};
         this.rootItems = [];
-
+    
         // Create map
         if(components){
             components.components.forEach(node => {
                 this.rootItems.push(this.createTreeItemMap(node, components.meta));
             });
         }
+
+        // Add links
+        if(links){
+            this.updateLinks(links);
+        } else {
+            this.links = {};
+        }
+
+    }
+
+    /**
+     * Updates the links in the view
+     * @param links 
+     */
+    updateLinks(links: LinksMap){
+        this.links = links;
+        this.refresh();
     }
 
     /**
@@ -111,7 +126,11 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param element 
      */
     getTreeItem(element: FigmaLayer): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return new LayerTreeItem(element);
+        let treeItem = new LayerTreeItem(element);
+        if(element.id in this.links){
+            treeItem.link = this.links[element.id];
+        }
+        return treeItem;
     }
 
     /**
@@ -150,6 +169,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 export class LayerTreeItem extends vscode.TreeItem {
     
     layer: FigmaLayer;
+    link?: LayerSelectorLink;
 
     constructor(layer: FigmaLayer){
         // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
@@ -178,12 +198,14 @@ export class LayerTreeItem extends vscode.TreeItem {
     }
 
     get description(): string {
+        if(this.isLinked){
+            return (this.link!).scopeName;
+        }
         return '';
     }
 
     get isLinked(): boolean {
-        // TODO implement
-        return false;
+        return this.link !== undefined;
     }
 
     get iconPath() {

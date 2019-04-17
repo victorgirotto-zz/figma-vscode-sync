@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
-import { FileStorage, LinksMap } from './util/storage';
-import { Stylesheet } from './util/stylesheet';
-import { FigmaFile } from './figma-components';
-import { FigmaLayerProvider } from './figmalayer';
+import { FileStorage } from './util/storage';
+import { Stylesheet, StylesheetScope } from './util/stylesheet';
+import { FigmaFile } from './figmafile';
+import { FigmaLayerProvider, FigmaLayer } from './figmalayer';
+import { LayerSelectorLink, LinksMap } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
@@ -28,10 +29,11 @@ export class FileState {
     private uri: vscode.Uri;
     private config: vscode.WorkspaceConfiguration;
     
-    // File state properties
-	private fileData: FileStorage; // for persisting and retrieving data
+    // Persisted properties API
+    private storage: FileStorage; // for persisting and retrieving data
+    
+    // View managers
 	private stylesheet: Stylesheet; // Represents the style scopes in the current file
-	private links: LinksMap; // Map between selectors <-> layers
     private _figmaLayerProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
 
 	/**
@@ -47,22 +49,93 @@ export class FileState {
         this.config = vscode.workspace.getConfiguration();
         
         // Load persisted data
-		this.fileData = new FileStorage(this.uri.path, this.context);
-		this.links = this.fileData.links;
-		this.figmaFile = this.fileData.components;
+		this.storage = new FileStorage(this.uri.path, this.context);
+		this.figmaFile = this.storage.components;
 		
 		// Instantiate view managers
-		this.stylesheet = new Stylesheet(this.editor, this.context);
-        this.figmaLayerProvider = new FigmaLayerProvider(this.figmaFile);
+		this.stylesheet = new Stylesheet(this.editor, this.linksBySelector);
 
         // Set initial status
-        this.status = this.status; // This looks really weird, but there are getter and setter functions for these
+        this.status = this.getDefaultStatus();
     }
 
 
-    /*=============================
-        FIGMA FILE & COMPONENTS
-    ==============================*/
+    /*==========
+        LINKS
+    ============*/
+
+    /**
+     * 
+     */
+    get linksByLayer(): LinksMap{
+        return this.storage.getLinksByLayer();
+    }
+    
+    /**
+     * 
+     */
+    get linksBySelector(): LinksMap{
+        return this.storage.getLinksBySelector();
+    }
+    
+    /**
+     * Adds or replaces a link between a layer and a css scope.
+     * 
+     * This will cause views to update accordingly 
+     * @param layer 
+     * @param scope 
+     */
+    addLink(layer: FigmaLayer, scope: StylesheetScope) {
+        // Create link
+        let link = new LayerSelectorLink(layer, scope);
+        // Persist it
+        this.storage.addLinkByLayer(link);
+        // Update views
+        this.updateViewsWithLinks();
+    }
+
+    /**
+     * Removes the link for a given layer
+     * @param layer 
+     */
+    removeLayerLink(layer: FigmaLayer){
+        this.storage.removeLinkByLayer(layer);
+        // Update views
+        this.updateViewsWithLinks();
+    }
+    
+    /**
+     * Updates the views with the current links
+     */
+    updateViewsWithLinks(){
+        this.figmaLayerProvider.updateLinks(this.linksByLayer);
+        this.stylesheet.updateLinks(this.linksBySelector);
+    }
+
+
+    /*===============
+        STYLESHEET
+    ================*/
+
+    /**
+     * Returns all available selectors
+     */
+    get selectors(): string[] {
+        return this.stylesheet.getAllSelectors();
+    }
+
+    /**
+     * 
+     * @param fullSelector 
+     */
+	getScopeByFullSelector(fullSelector: string) {
+		return this.stylesheet.getScope(fullSelector);
+	}
+
+
+    /*=====================================
+        FIGMA FILE, COMPONENTS & SIDEBAR
+    =======================================*/
 
     /**
      * Fetches the figma file
@@ -103,13 +176,16 @@ export class FileState {
      */
     set figmaFile(figmaFile: FigmaFile){
         // Update internal representation of the figma file
-        this.fileData.components = figmaFile;
+        this.storage.components = figmaFile;
         // Update treeview provider
-        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile);
+        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile, this.linksByLayer);
     }
 
+    /**
+     * Returns the figma file
+     */
     get figmaFile(): FigmaFile {
-        return this.fileData.components;
+        return this.storage.components;
     }
 
     /**
@@ -120,6 +196,13 @@ export class FileState {
         this._figmaLayerProvider = provider;
         // Register the provider
         vscode.window.registerTreeDataProvider('figmaComponents', this._figmaLayerProvider);
+    }
+
+    /**
+     * Returns the current layer provider
+     */
+    get figmaLayerProvider(): FigmaLayerProvider {
+        return this._figmaLayerProvider;
     }
 
 
@@ -138,7 +221,7 @@ export class FileState {
      * Returns the filekey associated with this document
      */
     get fileKey(): string | undefined {
-        return this.fileData.fileKey;
+        return this.storage.fileKey;
     }
 
     /**
@@ -153,7 +236,7 @@ export class FileState {
      */
     public attachFile(fileKey:string){
         // Persist this connection
-        this.fileData.fileKey = fileKey;
+        this.storage.fileKey = fileKey;
         // Retrieve components
         this.retrieveFigmaFile();
     }
@@ -162,7 +245,7 @@ export class FileState {
      * Deletes all local data for this file, thus disconnecting this file from a Figma file.
      */
     public detachFile(){
-        this.fileData.clearData();
+        this.storage.clearData();
     }
 
     /**
@@ -180,7 +263,7 @@ export class FileState {
                 FileState.statusBar.show();
                 break;
             case Status.SYNCED:
-                FileState.statusBar.text = `$(check) Figma: ${this.fileData.fileName}`;
+                FileState.statusBar.text = `$(check) Figma: ${this.fileName}`;
                 FileState.statusBar.command = 'figmasync.removeFigmaSync';
                 FileState.statusBar.show();
                 break;
@@ -196,7 +279,7 @@ export class FileState {
     /**
      * Returns a suggested status based on the current state of persistent components and language ID
      */
-    get status(): Status {
+    getDefaultStatus(): Status {
         if(!supportedLanguages.includes(this.editor.document.languageId)){
             return Status.UNSUPPORTED;
         }
@@ -204,7 +287,6 @@ export class FileState {
             return Status.SYNCED;
         }
         return Status.NOT_ATTACHED;
-
     }
 
 }

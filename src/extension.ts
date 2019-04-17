@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
 import { CurrentFileUtil } from './util/current-file-util';
-import { FigmaFile } from './figma-components';
+import { FigmaFile } from './figmafile';
 import { FigmaLayer } from './figmalayer';
 import { FileState } from './filestate';
 
@@ -73,9 +73,32 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	};
 
+	/**
+	 * 
+	 * @param layer 
+	 */
 	let linkLayer = function(layer: FigmaLayer){
+		// Get list of selectors to populate quickpick
+		let allSelectors = state.selectors;
 
-	}
+		// Prompt user
+		vscode.window.showQuickPick(allSelectors, {
+			placeHolder: `Choose the selector you want to link with layer "${layer.name}"`			
+		}).then((selector: string | undefined) => {
+			// Check if a selector was chosen
+			if(!selector){
+				// Delete link for the layer
+				// state.removeLayerLink(layer);
+			} else {
+				// Set link
+				let scope = state.getScopeByFullSelector(selector);
+				if(scope){
+					// Found scope. Add link.
+					state.addLink(layer, scope);
+				}
+			}
+		});
+	};
 
 	/**
 	 * Instantiates a file state based on persisted data

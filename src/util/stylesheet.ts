@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 import * as postcss from 'postcss';
+import { LinksMap } from '../link';
 
 export type CssProperties = {[prop:string]: string};
 const globalRules = ['body', 'html', '*', ':root'];
 
 export class Stylesheet {
-    
     text: string;
     baseScope: StylesheetScope;
     version: number;
 
     constructor(
         private editor: vscode.TextEditor, 
-        private context: vscode.ExtensionContext
+        private links: LinksMap
     ){
         this.text = this.editor.document.getText();
         this.baseScope = new StylesheetScope('body');
@@ -24,7 +24,8 @@ export class Stylesheet {
 
     /**
      * Parses a less file to map variables, selectors, and properties.
-     * TODO This implementation is not robust. Improve it. 
+     * 
+     * This uses postcss with a less syntax.
      */
     private parseFile(){
         const syntax = require('postcss-less');
@@ -68,7 +69,7 @@ export class Stylesheet {
                     // Add the new scope to its parent's children
                     scope.children.push(newScope);
                     // Add the selector to the range mapping
-                    let range = this.getRange(node);
+                    let range = this.calculateRange(node);
                     newScope.addRange(selector, range);
                 }
                 
@@ -78,9 +79,13 @@ export class Stylesheet {
         });
     }
 
+    updateLinks(links: LinksMap){
+        // TODO Implement
+    }
+
     /**
      * 
-     * @param selector 
+     * @param selector full css selector, starting from root scope
      */
     getScope(selector: string): StylesheetScope | undefined{
         let scope = this._getScope(selector, this.baseScope);
@@ -88,13 +93,21 @@ export class Stylesheet {
     }
 
     /**
+     * Returns an array of strings with all full css selectors within the base scope
+     */
+    getAllSelectors(): string[] {
+        return this.baseScope.getAllSelectorsList();
+    }
+
+    /**
+     * Gets a scope based on the full css selector
      * 
      * @param selector 
      * @param scope 
      */
     private _getScope(selector: string, scope: StylesheetScope): StylesheetScope | undefined {
         // Check if this scope is the desired one
-        if(scope.selector === selector){
+        if(scope.cssScopeName === selector){
             return scope;
         }
         
@@ -117,7 +130,7 @@ export class Stylesheet {
      * @param type 
      * @param startRange 
      */
-    private getRange(node: postcss.ChildNode): vscode.Range | undefined {    
+    private calculateRange(node: postcss.ChildNode): vscode.Range | undefined {    
         if(node.source && node.source.start){
             let startPosition = new vscode.Position(node.source.start.line-1, node.source.start.column-1);
     
@@ -164,7 +177,6 @@ export class Stylesheet {
 }
 
 export class StylesheetScope {
-
     props: CssProperties;
     variables: CssProperties;
     children: StylesheetScope[];
@@ -183,6 +195,49 @@ export class StylesheetScope {
         this.variables = {};
         this.children = [];
         this.ranges = {};
+    }
+
+    /**
+     * Resolves any '&' characters to their parent's resolved scope name
+     */
+    get resolvedScopeName(): string {
+        if(this.selector.includes('&') && this.parent){
+            // Get parent resolved selector
+            let parentSelector = this.parent.resolvedScopeName;
+            return this.selector.replace('&', parentSelector);
+        }
+        return this.selector;
+    }
+
+    /**
+     * Resolves the scope chain name into a CSS (not LESS) selector
+     * 
+     * e.g.
+     * 
+     *      .button { &:hover { ... } } -> .button:hover
+     */
+    get cssScopeName(): string {
+        if(this.selector.includes('&') && this.parent){
+            // Scope has parent and has & selector. Replace & with parent's css selector
+            let parentSelector = this.parent.cssScopeName;
+            return this.selector.replace('&', parentSelector);
+        } else if (this.parent){
+            // Selector has parent but no &. Just prepend parent selector
+            return `${this.parent.cssScopeName} ${this.selector}`;
+        }
+        // It doesn't have a parent. Just return it.
+        return this.selector;
+    }
+
+    /**
+     * Returns a list of all css selectors within this scope (starting with itself)
+     */
+    getAllSelectorsList(): string[] {
+        let list = [this.cssScopeName];
+        this.children.forEach(child => {
+            list.push(...child.getAllSelectorsList());
+        });
+        return list;
     }
 
     /**

@@ -1,41 +1,15 @@
 import * as vscode from 'vscode';
-import { FigmaFile } from '../figma-components';
+import { FigmaFile } from '../figmafile';
+import { LayerSelectorLink, LinksMap } from '../link';
 import { FigmaLayer } from '../figmalayer';
-import { StylesheetScope } from './stylesheet';
-
-export type LinksMap = { [layerId:string]: LayerSelectorLink };
-
-export class LayerSelectorLink {
-
-    public layerId: string;
-    public layerPath: string[];
-    public selector: string;
-
-    constructor(layer: FigmaLayer, scope: StylesheetScope){
-        let id = layer.id ? layer.id : '';
-        this.layerId = id;
-        this.layerPath = layer.path;
-        this.selector = scope.selector;
-    }
-
-}
 
 export class FileStorage {
-
     uri: string;
     context: vscode.ExtensionContext;
 
     constructor(uri: string, context: vscode.ExtensionContext){
         this.uri = uri;
         this.context = context;
-    }
-
-    set fileName(name: string){
-        this.context.workspaceState.update(`filename-${this.uri}`, name);
-    }
-
-    get fileName(): string{
-        return this.context.workspaceState.get(`filename-${this.uri}`) as string;
     }
 
     set fileKey(key: string | undefined){
@@ -47,42 +21,73 @@ export class FileStorage {
     }
 
     set components(components: FigmaFile){
-        this.context.workspaceState.update(`components-${this.uri}`, components);
+        this.context.workspaceState.update(`figmaFile-${this.uri}`, components);
     }
 
     get components(): FigmaFile {
-        return this.context.workspaceState.get(`components-${this.uri}`) as FigmaFile;
+        return this.context.workspaceState.get(`figmaFile-${this.uri}`) as FigmaFile;
     }
 
-    addLink(link: LayerSelectorLink){
+    /**
+     * Adds a link between a layer and a css scope
+     * @param layer 
+     */
+    addLinkByLayer(layer: LayerSelectorLink){
         // Get current links
-        let links = this.links;
+        let links = this.getLinksByLayer();
         // Add the new link
-        links[link.layerId] = link;
+        links[layer.layerId] = layer;
         // Update storage value
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
 
-    removeLinks(layerId: string){
-        let links = this.links;
+    /**
+     * Removes the link for a given layer
+     * @param layerId 
+     */
+    removeLinkByLayer(layer: FigmaLayer){
+        let links = this.getLinksByLayer();
         // Delete links for this layer
-        delete links[layerId];
+        delete links[layer.id];
         // Update storage value
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
 
-    get links(): LinksMap{
-        let links = this.context.workspaceState.get(`links-${this.uri}`) as LinksMap;
-        if(!links){
-            links = {};
+    /**
+     * Returns a LinksMap of links organized by layer ID
+     */
+    getLinksByLayer(): LinksMap {
+        let layerLinks = this.context.workspaceState.get<LinksMap>(`links-${this.uri}`);
+        if(layerLinks){
+            return layerLinks;
         }
-        return links;
+        return ({} as LinksMap);
     }
 
+    /**
+     * Returns a LinksMap of links organized by selector ID
+     */
+    getLinksBySelector(): LinksMap{
+        let linksBySelector: LinksMap = {};
+        let linksByLayer = this.getLinksByLayer();
+        if(!linksByLayer){
+            return {};
+        }
+        // Build inverted index
+        for(let layerId in linksByLayer){
+            let link = linksByLayer[layerId];
+            linksBySelector[link.scopeId] = link;
+        }
+        return linksBySelector;
+    }
+
+    /**
+     * Erases all figma sync data related to a file
+     */
     clearData(){
-        this.context.workspaceState.update(`filename-${this.uri}`, undefined);
+        console.log('Cleaning everything');
         this.context.workspaceState.update(`filekey-${this.uri}`, undefined);
-        this.context.workspaceState.update(`components-${this.uri}`, undefined);
+        this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
         this.context.workspaceState.update(`links-${this.uri}`, undefined);
     }
 
