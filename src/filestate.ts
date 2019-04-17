@@ -30,10 +30,10 @@ export class FileState {
     private config: vscode.WorkspaceConfiguration;
     
     // Persisted properties API
-    private storage: FileStorage; // for persisting and retrieving data
+    private storage!: FileStorage; // for persisting and retrieving data
     
     // View managers
-	private stylesheet: Stylesheet; // Represents the style scopes in the current file
+	private stylesheet!: Stylesheet; // Represents the style scopes in the current file
     private _figmaLayerProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
 
 	/**
@@ -47,7 +47,13 @@ export class FileState {
         this.context = context;
         this.uri = this.editor.document.uri;
         this.config = vscode.workspace.getConfiguration();
-        
+        this.load();
+    }
+
+    /**
+     * Based on the vscode properties, loads data from storage and sets up the views
+     */
+    load() {
         // Load persisted data
 		this.storage = new FileStorage(this.uri.path, this.context);
 		this.figmaFile = this.storage.components;
@@ -245,7 +251,10 @@ export class FileState {
      * Deletes all local data for this file, thus disconnecting this file from a Figma file.
      */
     public detachFile(){
+        // Delete data
         this.storage.clearData();
+        // Reload the views
+        this.load();
     }
 
     /**
