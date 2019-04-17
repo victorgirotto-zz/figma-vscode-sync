@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { FigmaComponents, ComponentsMeta } from './figma-components';
+import { FigmaFile, ComponentsMeta } from './figma-components';
 import { LinksMap } from './util/storage';
 
 
@@ -64,7 +64,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param components 
      * @param links 
      */
-    constructor(components?: FigmaComponents, links?: LinksMap){
+    constructor(components?: FigmaFile, links?: LinksMap){
         this.links = links ? links : {};
         this.treeItems = {};
         this.rootItems = [];

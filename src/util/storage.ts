@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FigmaComponents } from '../figma-components';
+import { FigmaFile } from '../figma-components';
 import { FigmaLayer } from '../figmalayer';
 import { StylesheetScope } from './stylesheet';
 
@@ -38,20 +38,20 @@ export class FileStorage {
         return this.context.workspaceState.get(`filename-${this.uri}`) as string;
     }
 
-    set fileKey(key: string){
+    set fileKey(key: string | undefined){
         this.context.workspaceState.update(`filekey-${this.uri}`, key);
     }
 
-    get fileKey(): string{
-        return this.context.workspaceState.get(`filekey-${this.uri}`) as string;
+    get fileKey(): string | undefined{
+        return this.context.workspaceState.get(`filekey-${this.uri}`);
     }
 
-    set components(components: FigmaComponents){
+    set components(components: FigmaFile){
         this.context.workspaceState.update(`components-${this.uri}`, components);
     }
 
-    get components(): FigmaComponents {
-        return this.context.workspaceState.get(`components-${this.uri}`) as FigmaComponents;
+    get components(): FigmaFile {
+        return this.context.workspaceState.get(`components-${this.uri}`) as FigmaFile;
     }
 
     addLink(link: LayerSelectorLink){

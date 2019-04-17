@@ -1,25 +1,12 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
-import * as path from 'path';
 import { CurrentFileUtil } from './util/current-file-util';
-import { FigmaComponents } from './figma-components';
-import { FigmaLayerProvider, FigmaLayer } from './figmalayer';
-import { CssUtil } from './util/css-util';
-import { FileStorage, LayerSelectorLink } from './util/storage';
-import { Stylesheet, StylesheetScope } from './util/stylesheet';
+import { FigmaFile } from './figma-components';
+import { FigmaLayer } from './figmalayer';
+import { FileState } from './filestate';
 
-const changeWait: number = 1000; // How long we wait before processing a change event
-let changeTimeout: NodeJS.Timeout;
-let statusBar: vscode.StatusBarItem;
+let state: FileState; // The FileState manages the persistant state for every file
 
-// Current file state
-let fileData: FileStorage; // for persisting and retrieving data
-let stylesheet: Stylesheet; // Represents the style scopes in the current file
-let figmaLayerProvider: FigmaLayerProvider; // Represents the sidebar
-let decorations: {[layerId:string] : vscode.TextEditorDecorationType} = {};
-
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	
 	/**
@@ -43,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 		if (fileURI){
 			const config = vscode.workspace.getConfiguration();
 			const token = apiKey ? apiKey : config.get('APIKey') as string;
-			const fileKey = fileData.fileKey;
+			const fileKey = state.fileKey;
 
 			// Check for the API token
 			if(!token){
@@ -67,93 +54,10 @@ export function activate(context: vscode.ExtensionContext) {
 				value: fileKey
 			}).then((fileKey) => {
 				if(fileKey){
-					// Store file key
-					fileData.fileKey = fileKey;
-					// Update status bar
-					switchContextToCurrentFile();
+					// Attach the file
+					state.attachFile(fileKey);
 				}
 			});
-		}
-	};
-
-	/**
-	 * Checks whether the figma structure cache is up to date with the one on Figma's server. If yes, just load it.
-	 * If it's not up-to-date or if no cache exists, create the structure and cache it.
-	 */
-	let createFigmaStructure = function(fileURI: string){
-		// First create the information message
-		statusBar.text = '$(repo-sync) Syncing with api.figma.com';
-		// Get data from Figma and parse it
-		return new Promise(resolve => {
-			const apiKey = vscode.workspace.getConfiguration().get('APIKey') as string;
-			const fileKey = fileData.fileKey;
-
-			// Get file data from API
-			const client = Figma.Client({ personalAccessToken: apiKey });
-			client.file(fileKey).then(({ data }) => {
-				// Retrieve cache if any
-				let figmaComponents = fileData.components;
-				
-				// Check if the there is data and if it's is up to date. If not, parse received data.
-				if(!figmaComponents || data.lastModified !== figmaComponents.lastModified){
-					// Add metadata to the workspace data
-					fileData.fileName = data.name;
-					// Parse document
-					figmaComponents = new FigmaComponents(data);
-					// Store components
-					fileData.components = figmaComponents;
-				}
-				
-				// Add sidebar item
-				createTreeView(figmaComponents);
-				// Update status bar
-				updateStatusBar();
-
-			}).catch(reason => {
-				// Something went wrong while retrieving data from Figma
-				vscode.window.showErrorMessage(reason.toString());
-			});
-		});
-	};
-
-	let handleDocumentChange = function(event: vscode.TextDocumentChangeEvent){
-		if(changeTimeout){
-			// Another change happened before computing this timeout.
-			clearTimeout(changeTimeout);
-		}
-		// Wait a bit before reacting to change
-		changeTimeout = setTimeout(() => {
-			evaluateLine(event);
-		}, changeWait);
-	};
-
-	let evaluateLine = function(event: vscode.TextDocumentChangeEvent){
-		let token = CssUtil.extractToken(event.contentChanges[0].range.start.line);
-		console.log(token);
-	};
-
-	let createTreeView = function(figmaComponents?: FigmaComponents | undefined){
-		let links = fileData.links;
-		figmaLayerProvider = new FigmaLayerProvider(figmaComponents, links);
-		vscode.window.registerTreeDataProvider('figmaComponents', figmaLayerProvider);
-	};
-
-	let updateSidebar = function(){
-		// Get document
-		let documentURI = CurrentFileUtil.getOpenFileURIPath();
-		if(documentURI){
-			// See if it's connected to a figma file
-			let fileKey = fileData.fileKey;
-			if (fileKey){
-				// Get cache structure, if any, and create tree view
-				let figmaComponents = fileData.components;
-				createTreeView(figmaComponents);
-				// If there is a file key, Update the structure
-				createFigmaStructure(documentURI);
-			} else {
-				// It's not connected to a file.
-				createTreeView();
-			}
 		}
 	};
 
@@ -164,193 +68,34 @@ export function activate(context: vscode.ExtensionContext) {
 		}).then((result: string | undefined) => {
 			if(result && result.toLowerCase() === 'yes'){
 				// Remove files
-				fileData.clearData();
-				// Refresh sidebar and status menu
-				updateSidebar();
-				updateStatusBar();
+				state.detachFile();
 			}	
 		});
 	};
 
-	let updateStatusBar = function(){
-		// Create status bar if it doesn't yet exist
-		if (!statusBar){
-			statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-		}
-		
-		// Check whether this is a LESS file and that it's being tracked
-		let figmaFileKey = fileData.fileKey;
-		if(!CurrentFileUtil.isFileLanguageID('less')){
-			// It's not a less file or the file is not being synced. Hide the status bar.
-			statusBar.hide();
-		} else if (!figmaFileKey){
-			// It's a less file but no Figma file has been attached
-			statusBar.text = `$(circle-slash) Not connected to Figma`;
-			statusBar.command = 'figmasync.syncLessFile';
-			// Show it
-			statusBar.show();
-		} else {
-			// It's a less file that's being tracked
-			statusBar.text = `$(check) Figma: ${fileData.fileName}`;
-			statusBar.command = 'figmasync.removeFigmaSync';
-			// Show it
-			statusBar.show();
-		}
-	};
+	let linkLayer = function(layer: FigmaLayer){
+
+	}
 
 	/**
-	 * 
-	 * @param layer 
-	 */
-	let linkLayerWithSelector = function(layer: FigmaLayer) {
-		// let existingLink = layer.linkedSelector;
-
-		// Ask user what selector they want to link this layer with
-		// vscode.window.showInputBox({
-		// 	prompt: `Enter the selector you want to link with layer "${layer.label}"`,
-		// 	placeHolder: 'selector',
-		// 	value: existingLink
-		// }).then((selector:string|undefined) => {
-			// Set or remove the layer link
-			// if(layer.id){
-			// 	if(!selector){
-			// 		// Remove link from layers
-			// 		layer.removeLinks();
-			// 		fileData.removeLinks(layer.id);
-			// 		figmaLayerProvider.refresh(layer);
-			// 		// Remove decoration
-			// 		removeCodeDecoration(layer.id);
-
-			// 	} else {
-			// 		let scope = stylesheet.getScope(selector);
-			// 		if(scope){ // Make sure the scope exists
-			// 			// Set the link, store it, and refresh the view
-			// 			let link = new LayerSelectorLink(layer, scope);
-			// 			layer.setLink(link.selector);
-			// 			fileData.addLink(link);
-			// 			figmaLayerProvider.refresh(layer);
-			// 			// Add code decorations
-			// 			addCodeDecoration(link);
-			// 		}
-			// 	}
-			// }
-		// });
-	};
-
-	/**
-	 * Removes a code decoration for a figma layer
-	 * @param layer 
-	 */
-	let removeCodeDecoration = function(layerId:string){
-		if(layerId in decorations){
-			let decoration = decorations[layerId];
-			decoration.dispose();
-			delete decorations[layerId];
-		}
-	};
-
-	/**
-	 * 
-	 * @param layer 
-	 */
-	let addCodeDecoration = function(link:LayerSelectorLink){
-		let selector = link.selector;
-		let scope = stylesheet.getScope(selector);
-		let editor = CurrentFileUtil.getCurrentFile();
-		if(scope && editor){
-			// Create range object
-			let range = scope.ranges[selector];
-
-			// Create layer path for hover information
-			let layerPath = link.layerPath;
-			let hoverMessageMarkdown = new vscode.MarkdownString(
-				'**Linked with Figma layer:**\n' + 
-				layerPath.map((val, i) => {
-					let boldPadding = i+1 === layerPath.length ? '**' : '';
-					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
-				}).join('\n')
-			);
-
-			// Create decoration
-			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
-			const decorationType = getLinkedLayerDecoration();
-			decorations[link.layerId] = decorationType;
-			editor.setDecorations(decorationType, options);
-		}
-	};
-
-	/**
-	 * Adds all code decorations for all existing links
-	 */
-	let UpdateAllCodeDecorations = function(){
-		// Remove all existing decorations
-		removeAllCodeDecorations();
-		
-		// Adds all other decorations
-		let links = fileData.links;
-		for(let layerId in links){
-			let link = links[layerId];
-			addCodeDecoration(link);
-		}
-	};
-
-	/**
-	 * Removes all code decorations
-	 */
-	let removeAllCodeDecorations = function(){
-		for(let layerId in decorations){
-			removeCodeDecoration(layerId);
-		}
-	};
-
-	/**
-	 * Gets the code decoration styles for selectors linked with a Figma layer
-	 */
-	let getLinkedLayerDecoration = function(): vscode.TextEditorDecorationType {
-		return vscode.window.createTextEditorDecorationType({
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: '#7C62FF',
-			isWholeLine: false,
-			backgroundColor: 'rgba(124, 98, 255, 0.1)',
-			overviewRulerColor: '#7C62FF',
-			overviewRulerLane: vscode.OverviewRulerLane.Left,
-			gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`),
-			gutterIconSize: 'auto',
-			borderRadius: '5px',
-			borderSpacing: '3px',
-			fontWeight: 'bolder',
-		});
-	};
-
-	/**
-	 * Refreshes everything to the starting point of a freshly opened file.
+	 * Instantiates a file state based on persisted data
 	 */
 	let switchContextToCurrentFile = function(){
-		let uri = CurrentFileUtil.getOpenFileURIPath();
 		let editor = CurrentFileUtil.getCurrentFile();
-		if(uri && editor){
-			// Select data storage
-			fileData = new FileStorage(uri, context);
-			// Switch document representation
-			stylesheet = new Stylesheet(editor, context);
-
-			// Update UI
-			updateStatusBar();
-			updateSidebar();
-			UpdateAllCodeDecorations();
+		if(editor){
+			// Instantiate state
+			state = new FileState(editor, context);
 		}
 	};
 
-	// Commands
+	// Register Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', switchContextToCurrentFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayerWithSelector));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 
 	// Event handlers
-	vscode.workspace.onDidChangeTextDocument(event => handleDocumentChange(event));
-	vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile);
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile));
 
 	// Reset everything
 	switchContextToCurrentFile();

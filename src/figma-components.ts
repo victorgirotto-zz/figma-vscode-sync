@@ -1,10 +1,10 @@
 import * as Figma from 'figma-js';
-import { FigmaUtil } from './util/figma-util';
 
 export type ComponentsMeta = {[key:string]: Figma.Component};
 
-export class FigmaComponents {
+export class FigmaFile {
 
+    name: string;
     lastModified: string;
     meta: ComponentsMeta;
     components: any[] = [];
@@ -18,6 +18,7 @@ export class FigmaComponents {
         // First, go through all components and parse their meta
         this.meta = data.components;
         this.lastModified = data.lastModified;
+        this.name = data.name;
 
         // Add children from all pages
         data.document.children.forEach((p: any) => {
