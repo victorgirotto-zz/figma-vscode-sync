@@ -6,15 +6,21 @@ export type LinksMap = { [key:string]: LayerSelectorLink };
 export class LayerSelectorLink {
 
     layerId: string;
-    scopeId: string;
     layerName: string;
+    layerPath: string[];
+
+    scopeId: string;
     scopeName: string;
+    scopeLocalName: string;
 
     constructor(layer: FigmaLayer, scope: StylesheetScope){
         this.layerId = layer.id;
-        this.scopeId = scope.cssScopeName;
         this.layerName = layer.name;
+        this.layerPath = layer.path;
+
+        this.scopeId = scope.cssScopeName;
         this.scopeName = scope.resolvedScopeName;
+        this.scopeLocalName = scope.selector;
     }
 
 }

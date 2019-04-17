@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as postcss from 'postcss';
-import { LinksMap } from '../link';
+import * as path from 'path';
+import { LinksMap, LayerSelectorLink } from '../link';
 
 export type CssProperties = {[prop:string]: string};
 const globalRules = ['body', 'html', '*', ':root'];
@@ -20,6 +21,9 @@ export class Stylesheet {
         
         // Parse the file
         this.parseFile();
+
+        // Add decorations for links
+        this.updateLinks(links);
     }
 
     /**
@@ -79,9 +83,71 @@ export class Stylesheet {
         });
     }
 
+    /**
+     * Updates the links in the stylesheet file
+     * @param links 
+     */
     updateLinks(links: LinksMap){
-        // TODO Implement
+        this.links = links;
+        for(let scopeId in this.links){
+            let link = this.links[scopeId];
+            let scope = this.getScope(link.scopeId);
+            if(scope){
+                this.addCodeDecoration(link, scope);
+            }
+        }
     }
+
+    /**
+	 * 
+	 * @param layer 
+	 */
+	private addCodeDecoration(link: LayerSelectorLink, scope: StylesheetScope){
+		let editor = this.editor;
+		if(editor){
+			// Create range object
+			let range = scope.ranges[scope.selector];
+
+			// Create layer path for hover information
+			let layerPath = link.layerPath;
+			let hoverMessageMarkdown = new vscode.MarkdownString(
+				'**Linked with Figma layer:**\n' + 
+				layerPath.map((val, i) => {
+					let boldPadding = i+1 === layerPath.length ? '**' : '';
+					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
+				}).join('\n')
+			);
+
+			// Create decoration
+			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
+            const decorationType = this.getLinkedLayerDecoration();
+            
+            // TODO store decoration
+            // decorations[link.layerId] = decorationType;
+            
+			editor.setDecorations(decorationType, options);
+		}
+	};
+
+    /**
+	 * Gets the code decoration style for selectors linked with a Figma layer
+	 */
+	private getLinkedLayerDecoration(): vscode.TextEditorDecorationType {
+		return vscode.window.createTextEditorDecorationType({
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: '#7C62FF',
+			isWholeLine: false,
+			backgroundColor: 'rgba(124, 98, 255, 0.1)',
+			overviewRulerColor: '#7C62FF',
+			overviewRulerLane: vscode.OverviewRulerLane.Left,
+			gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`),
+			gutterIconSize: 'auto',
+			borderRadius: '5px',
+			borderSpacing: '3px',
+			fontWeight: 'bolder',
+		});
+	};
 
     /**
      * 
