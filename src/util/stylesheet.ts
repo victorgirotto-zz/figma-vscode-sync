@@ -21,9 +21,6 @@ export class Stylesheet {
         
         // Parse the file
         this.parseFile();
-
-        // Add decorations for links
-        this.updateLinks(links);
     }
 
     /**
@@ -35,7 +32,10 @@ export class Stylesheet {
         const syntax = require('postcss-less');
         postcss().process(this.text, { syntax: syntax, from: undefined }).then(result => {
             if(result && result.root && result.root.nodes){
+                // Create the scopes
                 this.createStyleSheetScopes(result.root.nodes, this.baseScope);
+                // Add decorations for links
+                this.updateLinks(this.links);
             }
         });
     }
@@ -106,7 +106,7 @@ export class Stylesheet {
 		let editor = this.editor;
 		if(editor){
 			// Create range object
-			let range = scope.ranges[scope.selector];
+            let range = scope.ranges[scope.selector];
 
 			// Create layer path for hover information
 			let layerPath = link.layerPath;
@@ -127,7 +127,7 @@ export class Stylesheet {
             
 			editor.setDecorations(decorationType, options);
 		}
-	};
+	}
 
     /**
 	 * Gets the code decoration style for selectors linked with a Figma layer
@@ -176,7 +176,6 @@ export class Stylesheet {
         if(scope.cssScopeName === selector){
             return scope;
         }
-        
         // This is not the right scope. Look at it's children;
         for(let i = 0; i < scope.children.length; i++) {
             let childScope = scope.children[i];
