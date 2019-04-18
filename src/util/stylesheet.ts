@@ -101,6 +101,9 @@ export class Stylesheet {
      * @param links 
      */
     updateLinks(links: LinksMap){
+        // First, dispose of the current decorations
+        this.clearDecorations();
+        // Then, add the links
         this.links = links;
         for(let scopeId in this.links){
             let link = this.links[scopeId];

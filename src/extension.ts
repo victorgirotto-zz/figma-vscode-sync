@@ -61,11 +61,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	};
 
+	/**
+	 * 
+	 */
 	let removeFigmaSync = function(){
 		// Removes figma sync
-		vscode.window.showQuickPick(['Yes', 'No'], {
-			placeHolder: "Remove the connection between this file and Figma?"	
-		}).then((result: string | undefined) => {
+		promptYesOrNo("Remove the connection between this file and Figma?", (result: string | undefined) => {
 			if(result && result.toLowerCase() === 'yes'){
 				// Remove files
 				state.detachFile();
@@ -75,9 +76,40 @@ export function activate(context: vscode.ExtensionContext) {
 
 	/**
 	 * 
+	 * @param placeholder 
+	 * @param resolveFn 
+	 */
+	let promptYesOrNo = function(placeholder: string, resolveFn: Function){
+		vscode.window.showQuickPick(['Yes', 'No'], {
+			placeHolder: placeholder	
+		}).then((result: string | undefined) => {
+			resolveFn(result);
+		});
+	};
+
+	/**
+	 * 
 	 * @param layer 
 	 */
 	let linkLayer = function(layer: FigmaLayer){
+		if(state.isLayerLinked(layer)){
+			// A link already exists. Prompt about removing it.
+			promptYesOrNo('Do you want to remove the link for this layer?', (result: string | undefined) => {
+				if(result && result === 'Yes'){
+					state.removeLayerLink(layer);
+				}
+			});
+		} else {
+			// There is no link. Prompt for layer.
+			chooseSelectorPrompt(layer);
+		}
+	};
+
+	/**
+	 * 
+	 * @param layer 
+	 */
+	let chooseSelectorPrompt = function(layer: FigmaLayer){
 		// Get list of selectors to populate quickpick
 		let allSelectors = state.selectors;
 

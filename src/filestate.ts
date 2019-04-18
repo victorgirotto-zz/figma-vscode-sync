@@ -97,6 +97,18 @@ export class FileState {
     get linksBySelector(): LinksMap{
         return this.storage.getLinksBySelector();
     }
+
+    /**
+     * Returns a boolean stating whether this layer is linked or not
+     * @param layer 
+     */
+    isLayerLinked(layer: FigmaLayer): boolean{
+        let links = this.linksByLayer;
+        if(layer.id in links){
+            return true;
+        }
+        return false;
+    }
     
     /**
      * Adds or replaces a link between a layer and a css scope.
