@@ -128,12 +128,12 @@ export class Stylesheet {
 			// Create layer path for hover information
             let layerPath = link.layerPath;
 			let hoverMessageMarkdown = new vscode.MarkdownString(
-				`![Figma layer icon](${path.join(__filename, '..', '..', '..', 'media', 'Sidebar', 'Active', 'component.svg')}) **Figma layer** \n` + 
+				`**Linked Figma layer** \n` + 
 				layerPath.map((val, i) => {
                     // Create markdown for layer item
                     let isActualLayer = (i+1 === layerPath.length);
                     let args = JSON.stringify([{layerId: link.layerId}]);
-                    let layerName = isActualLayer ? `* [${val}](command:figmasync.revealLayer?${encodeURIComponent(args)})` : `* ${val}`;
+                    let layerName = isActualLayer ? `* [${val}](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")` : `* ${val}`;
                     let indentation = '\t'.repeat(i);
                     return indentation + layerName + '\n';
                 }).join('\n')

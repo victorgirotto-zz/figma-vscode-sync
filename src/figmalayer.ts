@@ -216,11 +216,24 @@ export class LayerTreeItem extends vscode.TreeItem {
         return this.link !== undefined;
     }
 
+    get hasStyles(): boolean {
+        return Object.entries(this.layer.styles).length !== 0;
+    }
+
     get iconPath() {
-        let folder = this.isLinked ? 'Active' : 'Inactive';
+        // Get correct icon folder
+        let folder = 'active';
+        if(!this.isLinked){
+            if(this.hasStyles){
+                folder = 'inactive';
+            } else {
+                folder = 'disabled';
+            }
+        }
+        // Return icon path
         return {
-            light: path.join(__filename, '..', '..', 'media', 'sidebar', folder, `${this.layer.type}.svg`),
-            dark: path.join(__filename, '..', '..', 'media', 'sidebar', folder, `${this.layer.type}.svg`)
+            light: path.join(__filename, '..', '..', 'media', 'sidebar', 'light', folder, `${this.layer.type}.svg`),
+            dark: path.join(__filename, '..', '..', 'media', 'sidebar', 'dark', folder, `${this.layer.type}.svg`)
         };
     }
 }
