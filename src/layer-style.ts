@@ -1,45 +1,5 @@
-import * as Figma from 'figma-js';
 import { FigmaUtil } from './util/figma-util';
 import { CssProperties } from './util/stylesheet';
-
-/**
- * 
- */
-export class FigmaSyncComponent {
-    id: string;
-    name: string;
-    description: string;
-    style: LayerStyle;
-
-    constructor(id:string, name:string, description:string){
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.style = new LayerStyle();
-    }
-}
-
-/**
- * 
- */
-export class LayerStyle {
-    props: CssProperties = {};
-    children: LayerStyle[] = [];
-
-    /**
-     * Builds a component's style tree based on the figma node passed as parameter.
-     * This tree is a "flattened" version of the component's layer structure in Figma.
-     * By that, I mean that this function will:
-     * 
-     * 
-     * @param node Figma.Node that will be parsed
-     */
-    parseProperties(node: any){
-        this.props = new Parser(node).parse();
-        // this.props = new Parser(node.children[1]).parse(); // This yields some styles
-    }
-}
-
 
 /**
  * 

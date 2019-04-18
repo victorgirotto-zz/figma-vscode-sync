@@ -42,7 +42,7 @@ export class FigmaUtil {
             return `rgba(${color.r},${color.g},${color.b},${color.a})`;
         } else {
             // Return in HEX
-            let convert = (channel: number) => { return (channel * 255).toString(16).padStart(2,'0'); };
+            let convert = (channel: number) => { return Math.floor(channel * 255).toString(16).padStart(2,'0'); };
             let r = convert(color.r);
             let g = convert(color.g);
             let b = convert(color.b);

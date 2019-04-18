@@ -75,9 +75,9 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * 
-	 * @param placeholder 
-	 * @param resolveFn 
+	 * Prompts the user a yes or no question, and executes a resolveFn function when a choice is made
+	 * @param placeholder the message the user will be propted with
+	 * @param resolveFn The function execute when the choice is made
 	 */
 	let promptYesOrNo = function(placeholder: string, resolveFn: Function){
 		vscode.window.showQuickPick(['Yes', 'No'], {
@@ -133,6 +133,14 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
+	 * Reveals a layer in the sidebar
+	 * @param layer 
+	 */
+	let revealLayer = function(layerId: string){
+		state.revealLayerById(layerId);
+	}
+
+	/**
 	 * Instantiates a file state based on persisted data
 	 */
 	let switchContextToCurrentFile = function(){
@@ -152,6 +160,11 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', switchContextToCurrentFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', function(args: any){
+		if('layerId' in args){
+			revealLayer(args.layerId);
+		}
+	}));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile));

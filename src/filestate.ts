@@ -35,6 +35,7 @@ export class FileState {
     // View managers
 	private stylesheet!: Stylesheet; // Represents the style scopes in the current file
     private _figmaLayerProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
+    private treeView!: vscode.TreeView<FigmaLayer>;
 
 	/**
 	 * 
@@ -227,7 +228,9 @@ export class FileState {
         // Update internal representation
         this._figmaLayerProvider = provider;
         // Register the provider
-        vscode.window.registerTreeDataProvider('figmaComponents', this._figmaLayerProvider);
+        this.treeView = vscode.window.createTreeView('figmaComponents', {
+            treeDataProvider: this._figmaLayerProvider
+        });
     }
 
     /**
@@ -235,6 +238,17 @@ export class FileState {
      */
     get figmaLayerProvider(): FigmaLayerProvider {
         return this._figmaLayerProvider;
+    }
+
+    /**
+     * Reveals a layer in the sidebar by its ID
+     * @param layerId 
+     */
+    revealLayerById(layerId: string){
+        let figmaLayer = this.figmaLayerProvider.treeItems[layerId];
+        if(figmaLayer){
+            this.treeView.reveal(figmaLayer);
+        }
     }
 
 

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { FigmaFile, ComponentsMeta } from './figmafile';
 import { LinksMap, LayerSelectorLink } from './link';
+import { CssProperties } from './util/stylesheet';
+import { Parser } from './layer-style';
 
 /**
  * Represents a Figma layer
@@ -10,10 +12,12 @@ export class FigmaLayer {
 
     node: any;
     parent: FigmaLayer | undefined;
+    styles: CssProperties = {};
 
     constructor(node: any, parent?: FigmaLayer) {
         this.node = node;
         this.parent = parent;
+        this.styles = new Parser(node).parse();
     }
 
     get id(): string {
@@ -194,7 +198,7 @@ export class LayerTreeItem extends vscode.TreeItem {
     }
 
     get tooltip(): string {
-        return 'Path: ' + this.layer.path.join(' ');
+        return JSON.stringify(this.layer.styles);
     }
 
     get label(): string {

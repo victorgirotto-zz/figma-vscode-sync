@@ -5,6 +5,7 @@ import { LinksMap, LayerSelectorLink } from '../link';
 
 // Type of css properties
 export type CssProperties = {[prop:string]: string};
+
 // Rules that count as global scope
 const globalRules = ['body', 'html', '*', ':root'];
 // Empty plugin to disable postcss warning message
@@ -127,12 +128,18 @@ export class Stylesheet {
 			// Create layer path for hover information
             let layerPath = link.layerPath;
 			let hoverMessageMarkdown = new vscode.MarkdownString(
-				'Figma layer:\n' + 
+				`![Figma layer icon](${path.join(__filename, '..', '..', '..', 'media', 'Sidebar', 'Active', 'component.svg')}) **Figma layer** \n` + 
 				layerPath.map((val, i) => {
-					let boldPadding = i+1 === layerPath.length ? '**' : '';
-					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
-				}).join('\n')
-			);
+                    // Create markdown for layer item
+                    let isActualLayer = (i+1 === layerPath.length);
+                    let args = JSON.stringify([{layerId: link.layerId}]);
+                    let layerName = isActualLayer ? `* [${val}](command:figmasync.revealLayer?${encodeURIComponent(args)})` : `* ${val}`;
+                    let indentation = '\t'.repeat(i);
+                    return indentation + layerName + '\n';
+                }).join('\n')
+            );
+            // Enable links in the markdown string
+            hoverMessageMarkdown.isTrusted = true;
 
 			// Create decoration
 			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
@@ -262,8 +269,30 @@ export class Stylesheet {
         return undefined;
     }
 
+    /**
+     * This method compares two CssProperties objects and returns those that differ between them.
+     * Only properties that exist in both CssProperties instances will be considered.
+     * @param props1 
+     * @param props2 
+     */
+    static diffIntersectingCssProperties(props1: CssProperties, props2: CssProperties): string[]{
+        let different: string[] = [];
+        for(let prop in props1){
+            if(prop in props2){
+                // Found an intersecting property. Compare their values
+                if(props1[prop] !== props2[prop]){
+                    different.push(prop);
+                }
+            }
+        }
+        return different;
+    }
 }
 
+
+/**
+ * This class represents a scope (properties within a selector) in a less/css file.
+ */
 export class StylesheetScope {
     props: CssProperties;
     variables: CssProperties;

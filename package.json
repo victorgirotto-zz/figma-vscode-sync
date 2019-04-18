@@ -34,6 +34,10 @@
 					"light": "media/link.svg",
 					"dark": "media/link.svg"
 				}
+			},
+			{
+				"command": "figmasync.revealLayer",
+				"title": "Reveal Layer"
 			}
 		],
 		"menus": {
