@@ -47,6 +47,7 @@ export class FileState {
         this.context = context;
         this.uri = this.editor.document.uri;
         this.config = vscode.workspace.getConfiguration();
+        // Load from storage
         this.load();
     }
 
@@ -56,7 +57,12 @@ export class FileState {
     load() {
         // Load persisted data
 		this.storage = new FileStorage(this.uri.path, this.context);
-		this.figmaFile = this.storage.components;
+        this.figmaFile = this.storage.components;
+        
+        // Check for updates on server if a file is connected
+        if(this.figmaFile){
+            this.retrieveFigmaFile();
+        }
 		
 		// Instantiate view managers
 		this.stylesheet = new Stylesheet(this.editor, this.linksBySelector);
@@ -261,25 +267,26 @@ export class FileState {
      * Sets the status of the extension. This will be reflected in the status bar
      */
     set status(status: Status){
+        let showStatusBar = (text:string, command?:string) => {
+            if(command){
+                FileState.statusBar.command = command;
+            }
+            FileState.statusBar.text = text;
+            FileState.statusBar.show();
+        };
+
         switch(status){
             case Status.NOT_ATTACHED:
-                FileState.statusBar.text = `$(circle-slash) Not connected to Figma`;
-                FileState.statusBar.command = 'figmasync.syncLessFile';
-                FileState.statusBar.show();
+                showStatusBar(`$(circle-slash) Not connected to Figma`, 'figmasync.syncLessFile');
                 break;
             case Status.SYNCING:
-                FileState.statusBar.text = '$(repo-sync) Syncing with api.figma.com';
-                FileState.statusBar.show();
+                showStatusBar('$(repo-sync) Syncing with api.figma.com');
                 break;
             case Status.SYNCED:
-                FileState.statusBar.text = `$(check) Figma: ${this.fileName}`;
-                FileState.statusBar.command = 'figmasync.removeFigmaSync';
-                FileState.statusBar.show();
+                showStatusBar(`$(check) Figma: ${this.fileName}`, 'figmasync.removeFigmaSync');
                 break;
             case Status.ERROR:
-                FileState.statusBar.text = `$(alert) Something went wrong...`;
-                FileState.statusBar.command = 'figmasync.syncLessFile';
-                FileState.statusBar.show();
+                showStatusBar(`$(alert) Something went wrong...`, 'figmasync.syncLessFile');
             default:
                 FileState.statusBar.hide();
         }

@@ -24,7 +24,7 @@ export class FigmaLayer {
         if(!this.node.children){
             return [];
         }
-        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(c));
+        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(c, this));
     }
 
     get name(): string {
@@ -101,7 +101,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      */
     private createTreeItemMap(node: any, meta: ComponentsMeta, parent?: FigmaLayer): FigmaLayer{
         // Create layer item
-        let layer = new FigmaLayer(node);
+        let layer = new FigmaLayer(node, parent);
         // Add to map
         this.treeItems[node.id] = layer;
         // Build the children
@@ -193,13 +193,17 @@ export class LayerTreeItem extends vscode.TreeItem {
         // this isn't really necessary. So do nothing I guess.
     }
 
+    get tooltip(): string {
+        return 'Path: ' + this.layer.path.join(' ');
+    }
+
     get label(): string {
         return this.layer.name;
     }
 
     get description(): string {
         if(this.isLinked){
-            return (this.link!).scopeName;
+            return (this.link!).scopeName.replace(/\r?\n|\r/g, '');
         }
         return '';
     }

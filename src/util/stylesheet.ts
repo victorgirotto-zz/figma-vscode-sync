@@ -3,8 +3,14 @@ import * as postcss from 'postcss';
 import * as path from 'path';
 import { LinksMap, LayerSelectorLink } from '../link';
 
+// Type of css properties
 export type CssProperties = {[prop:string]: string};
+// Rules that count as global scope
 const globalRules = ['body', 'html', '*', ':root'];
+// Empty plugin to disable postcss warning message
+const noopPlugin = postcss.plugin('postcss-noop', () => {
+    return async () => {}; 
+});
 
 export class Stylesheet {
     text: string;
@@ -30,7 +36,7 @@ export class Stylesheet {
      */
     private parseFile(){
         const syntax = require('postcss-less');
-        postcss().process(this.text, { syntax: syntax, from: undefined }).then(result => {
+        postcss([noopPlugin]).process(this.text, { syntax: syntax, from: undefined }).then(result => {
             if(result && result.root && result.root.nodes){
                 // Create the scopes
                 this.createStyleSheetScopes(result.root.nodes, this.baseScope);
@@ -64,17 +70,22 @@ export class Stylesheet {
             } else if(node.type === 'rule'){ // Processing a rule
                 let selector = node.selector;
                 let newScope = scope;
+                let range = this.calculateRange(node);
 
                 // Create a new scope if this is not the global scope
-                // TODO handle this better, e.g. html scope, etc.
                 if(!globalRules.includes(selector)){
                     // Create the new scope
                     newScope = new StylesheetScope(selector, scope);     
                     // Add the new scope to its parent's children
                     scope.children.push(newScope);
                     // Add the selector to the range mapping
-                    let range = this.calculateRange(node);
                     newScope.addRange(selector, range);
+                } else {
+                    // This is the base scope. Add it's range
+                    let scope = this.getScope(selector);
+                    if(scope){
+                        scope.addRange(selector, range);
+                    }
                 }
                 
                 // If this node has children, process them
@@ -109,9 +120,9 @@ export class Stylesheet {
             let range = scope.ranges[scope.selector];
 
 			// Create layer path for hover information
-			let layerPath = link.layerPath;
+            let layerPath = link.layerPath;
 			let hoverMessageMarkdown = new vscode.MarkdownString(
-				'**Linked with Figma layer:**\n' + 
+				'Figma layer:\n' + 
 				layerPath.map((val, i) => {
 					let boldPadding = i+1 === layerPath.length ? '**' : '';
 					return '\t'.repeat(i) + `* ${boldPadding}${val}${boldPadding}`;
@@ -134,20 +145,17 @@ export class Stylesheet {
 	 */
 	private getLinkedLayerDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
-			borderWidth: '1px',
+			borderWidth: '0 0 1px 0',
 			borderStyle: 'solid',
-			borderColor: '#7C62FF',
+            borderColor: '#7C62FF',
 			isWholeLine: false,
-			backgroundColor: 'rgba(124, 98, 255, 0.1)',
 			overviewRulerColor: '#7C62FF',
 			overviewRulerLane: vscode.OverviewRulerLane.Left,
-			gutterIconPath: path.join(__filename, '..', '..', 'media', 'sidebar', `component.svg`),
-			gutterIconSize: 'auto',
-			borderRadius: '5px',
-			borderSpacing: '3px',
+			gutterIconPath: path.join(__filename, '..', '..', '..', 'media', 'Sidebar', 'Active', 'component.svg'),
+            gutterIconSize: 'auto',
 			fontWeight: 'bolder',
 		});
-	};
+	}
 
     /**
      * 

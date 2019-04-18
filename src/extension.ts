@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// Check if a selector was chosen
 			if(!selector){
 				// Delete link for the layer
-				// state.removeLayerLink(layer);
+				state.removeLayerLink(layer);
 			} else {
 				// Set link
 				let scope = state.getScopeByFullSelector(selector);
