@@ -106,6 +106,10 @@ export function activate(context: vscode.ExtensionContext) {
 	let switchContextToCurrentFile = function(){
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(editor){
+			// If there is already a state, dispose of it
+			if(state){
+				state.dispose();
+			}
 			// Instantiate state
 			state = new FileState(editor, context);
 		}

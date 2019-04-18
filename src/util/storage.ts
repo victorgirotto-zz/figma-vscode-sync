@@ -85,7 +85,6 @@ export class FileStorage {
      * Erases all figma sync data related to a file
      */
     clearData(){
-        console.log('Cleaning everything');
         this.context.workspaceState.update(`filekey-${this.uri}`, undefined);
         this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
         this.context.workspaceState.update(`links-${this.uri}`, undefined);

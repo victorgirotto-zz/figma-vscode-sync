@@ -16,6 +16,7 @@ export class Stylesheet {
     text: string;
     baseScope: StylesheetScope;
     version: number;
+    decorations: vscode.TextEditorDecorationType[];
 
     constructor(
         private editor: vscode.TextEditor, 
@@ -24,6 +25,7 @@ export class Stylesheet {
         this.text = this.editor.document.getText();
         this.baseScope = new StylesheetScope('body');
         this.version = this.editor.document.version;
+        this.decorations = [];
         
         // Parse the file
         this.parseFile();
@@ -131,19 +133,20 @@ export class Stylesheet {
 
 			// Create decoration
 			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
-            const decorationType = this.getLinkedLayerDecoration();
+            const decorationType = this.getLinkedSelectorDecoration();
             
-            // TODO store decoration
-            // decorations[link.layerId] = decorationType;
+            // Store decoration
+            this.decorations.push(decorationType);
             
+            // Add them to the editor
 			editor.setDecorations(decorationType, options);
 		}
-	}
+    }
 
     /**
 	 * Gets the code decoration style for selectors linked with a Figma layer
 	 */
-	private getLinkedLayerDecoration(): vscode.TextEditorDecorationType {
+	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
 			borderWidth: '0 0 1px 0',
 			borderStyle: 'solid',
@@ -155,7 +158,16 @@ export class Stylesheet {
             gutterIconSize: 'auto',
 			fontWeight: 'bolder',
 		});
-	}
+    }
+    
+    /**
+     * Removes all decorations currently in place
+     */
+    clearDecorations() {
+        this.decorations.forEach(d => {
+            d.dispose();
+        });
+    }
 
     /**
      * 

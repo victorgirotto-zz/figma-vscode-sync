@@ -61,7 +61,7 @@ export class FileState {
         
         // Check for updates on server if a file is connected
         if(this.figmaFile){
-            this.retrieveFigmaFile();
+            this.fetchAPIData();
         }
 		
 		// Instantiate view managers
@@ -69,6 +69,14 @@ export class FileState {
 
         // Set initial status
         this.status = this.getDefaultStatus();
+    }
+
+    /**
+     * Removes any lingering elements from the screen
+     */
+    dispose(){
+        // Remove decorations
+        this.stylesheet.clearDecorations();
     }
 
 
@@ -152,15 +160,12 @@ export class FileState {
     /**
      * Fetches the figma file
      */
-    private retrieveFigmaFile(){
+    private fetchAPIData(){
         if(this.fileKey && this.APIKey){
             // Set status
             this.status = Status.SYNCING;
             const client = Figma.Client({ personalAccessToken: this.APIKey });
             client.file(this.fileKey).then(({ data }) => {
-                // Change status
-                this.status = Status.SYNCED;
-                
                 // Retrieve cache if any
                 let figmaFile = this.figmaFile;
                 
@@ -171,6 +176,9 @@ export class FileState {
                     // Store components
                     this.figmaFile = figmaFile;
                 }
+
+                // Change status
+                this.status = Status.SYNCED;
             }).catch(reason => {
                 this.status = Status.ERROR;
                 throw new Error('Something went wrong while fetching the data...');
@@ -250,7 +258,7 @@ export class FileState {
         // Persist this connection
         this.storage.fileKey = fileKey;
         // Retrieve components
-        this.retrieveFigmaFile();
+        this.fetchAPIData();
     }
 
     /**
@@ -259,6 +267,8 @@ export class FileState {
     public detachFile(){
         // Delete data
         this.storage.clearData();
+        // Dispose of view items
+        this.dispose();
         // Reload the views
         this.load();
     }
