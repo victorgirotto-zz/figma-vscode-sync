@@ -182,16 +182,20 @@ export class FileState {
                 // Retrieve cache if any
                 let figmaFile = this.figmaFile;
                 
-                // Check if the there is data and if it's is up to date. If not, parse received data.
-                if(!figmaFile || data.lastModified !== figmaFile.lastModified){
-                    // Parse document
-                    figmaFile = new FigmaFile(data);
-                    // Store components
-                    this.figmaFile = figmaFile;
+                // Check if it's still the same file. User may have switched it in the meantime.
+                if(figmaFile.key === data.document.id){
+                    
+                    // Check if the there is data and if it's is up to date. If not, parse received data.
+                    if(!figmaFile || data.lastModified !== figmaFile.lastModified){
+                        // Parse document
+                        figmaFile = new FigmaFile(data);
+                        // Store components
+                        this.figmaFile = figmaFile;
+                    }
+    
+                    // Change status
+                    this.status = Status.SYNCED;
                 }
-
-                // Change status
-                this.status = Status.SYNCED;
             }).catch(reason => {
                 this.status = Status.ERROR;
                 throw new Error('Something went wrong while fetching the data...');

@@ -4,6 +4,7 @@ export type ComponentsMeta = {[key:string]: Figma.Component};
 
 export class FigmaFile {
 
+    key: string;
     name: string;
     lastModified: string;
     meta: ComponentsMeta;
@@ -19,6 +20,7 @@ export class FigmaFile {
         this.meta = data.components;
         this.lastModified = data.lastModified;
         this.name = data.name;
+        this.key = data.document.id;
 
         // Add children from all pages
         data.document.children.forEach((p: any) => {

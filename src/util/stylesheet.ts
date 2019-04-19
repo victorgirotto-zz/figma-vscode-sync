@@ -294,10 +294,10 @@ export class Stylesheet {
  * This class represents a scope (properties within a selector) in a less/css file.
  */
 export class StylesheetScope {
-    props: CssProperties;
     variables: CssProperties;
     children: StylesheetScope[];
     ranges: {[key:string]: vscode.Range};
+    styles: CssProperties;
 
     /**
      * 
@@ -308,7 +308,7 @@ export class StylesheetScope {
         public selector: string,
         public parent?: StylesheetScope,
     ){
-        this.props = {};
+        this.styles = {};
         this.variables = {};
         this.children = [];
         this.ranges = {};
@@ -393,7 +393,7 @@ export class StylesheetScope {
             // this is a variable. Resolve it.
             finalValue = this.resolveVariable(value.substring(1));
         }
-        this.props[prop] = finalValue;
+        this.styles[prop] = finalValue;
     }
 
     /**
