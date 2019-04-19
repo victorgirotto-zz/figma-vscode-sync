@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { FigmaFile, ComponentsMeta } from './figmafile';
 import { LinksMap, LayerSelectorLink } from './link';
-import { CssProperties } from './util/stylesheet';
-import { Parser } from './layer-style';
+import { CssProperties } from './stylesheet';
+import { Parser } from './figmanodeparser';
 
 /**
  * Represents a Figma layer
@@ -65,11 +65,11 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     /**
      * Builds the treeview provider from a list of figma components and links
      * @param components 
-     * @param links 
      */
-    constructor(components?: FigmaFile, links?: LinksMap){
+    constructor(components?: FigmaFile){
         this.treeItems = {};
         this.rootItems = [];
+        this.links = {};
     
         // Create map
         if(components){
@@ -77,14 +77,6 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
                 this.rootItems.push(this.createTreeItemMap(node, components.meta));
             });
         }
-
-        // Add links
-        if(links){
-            this.updateLinks(links);
-        } else {
-            this.links = {};
-        }
-
     }
 
     /**
@@ -132,7 +124,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     getTreeItem(element: FigmaLayer): vscode.TreeItem | Thenable<vscode.TreeItem> {
         let treeItem = new LayerTreeItem(element);
         if(element.id in this.links){
-            treeItem.link = this.links[element.id];
+            treeItem.links = this.links[element.id];
         }
         return treeItem;
     }
@@ -173,7 +165,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 export class LayerTreeItem extends vscode.TreeItem {
     
     layer: FigmaLayer;
-    link?: LayerSelectorLink;
+    links: LayerSelectorLink[];
 
     constructor(layer: FigmaLayer){
         // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
@@ -185,6 +177,7 @@ export class LayerTreeItem extends vscode.TreeItem {
         }
         super(layer.name, collapsibleState);
         this.layer = layer;
+        this.links = [];
     }
 
     get id(): string {
@@ -207,13 +200,19 @@ export class LayerTreeItem extends vscode.TreeItem {
 
     get description(): string {
         if(this.isLinked){
-            return (this.link!).scopeName.replace(/\r?\n|\r/g, '');
+            // Add all scope names
+            let str = this.links.map(link => {
+                return link.scopeName;
+            }).join(' | ');
+
+            // Remove newlines and return
+            return str.replace(/\r?\n|\r/g, '');
         }
         return '';
     }
 
     get isLinked(): boolean {
-        return this.link !== undefined;
+        return this.links.length > 0;
     }
 
     get hasStyles(): boolean {

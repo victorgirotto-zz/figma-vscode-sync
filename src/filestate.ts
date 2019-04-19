@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
-import { FileStorage } from './util/storage';
-import { Stylesheet, StylesheetScope } from './util/stylesheet';
+import { FileStorage } from './storage';
+import { Stylesheet, StylesheetScope } from './stylesheet';
 import { FigmaFile } from './figmafile';
 import { FigmaLayerProvider, FigmaLayer } from './figmalayer';
-import { LayerSelectorLink, LinksMap } from './link';
+import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
@@ -65,11 +65,15 @@ export class FileState {
             this.fetchAPIData();
         }
 		
-		// Instantiate view managers
-		this.stylesheet = new Stylesheet(this.editor, this.linksBySelector);
-
-        // Set initial status
-        this.status = this.getDefaultStatus();
+		// Instantiate view the stylesheet view manager
+        this.stylesheet = new Stylesheet(this.editor);
+        // Wait for the file parsing to end before continuing with loading
+        this.stylesheet.addParsedFileCallback(()=>{
+            // Load links
+            this.updateViewsWithLinks();
+            // Set initial status
+            this.status = this.getDefaultStatus();
+        });
     }
 
     /**
@@ -86,17 +90,24 @@ export class FileState {
     ============*/
 
     /**
-     * 
+     * Returns a list of all link IDs
      */
-    get linksByLayer(): LinksMap{
-        return this.storage.getLinksByLayer();
+    get linksIds(): string[][] {
+        return this.storage.links;
+    }
+
+    /**
+     * Returns a set of all existing links indexed by the layer id
+     */
+    get linksByLayer(): LinksMap {
+        return this._getLinksBy(IdOrder.Layer);
     }
     
     /**
-     * 
+     * Returns a set of all existing links indexed by the layer id
      */
-    get linksBySelector(): LinksMap{
-        return this.storage.getLinksBySelector();
+    get linksBySelector(): LinksMap {
+        return this._getLinksBy(IdOrder.Scope);
     }
 
     /**
@@ -110,6 +121,33 @@ export class FileState {
         }
         return false;
     }
+
+    /**
+     * Gets a map of links by either the scope or layer ID
+     * @param type IdOrder of the desired mapping
+     */
+    private _getLinksBy(type: IdOrder): LinksMap{
+        let links = this.storage.links;
+        let linksMap = links.reduce((acc, ids) => {
+            // Retrieve both
+            let layer = this.getLayerById(ids[IdOrder.Layer]);
+            let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
+            let key = ids[type];
+            // If both found, add to object
+            if(layer && scope){
+                let linksArray = acc[key];
+                if(!linksArray){
+                    // If this is the first link for this layer, create the array
+                    linksArray = [];
+                }
+                // Add to array and to acc object
+                linksArray.push(new LayerSelectorLink(layer, scope));
+                acc[key] = linksArray;
+            }
+            return acc;
+        }, {} as LinksMap);
+        return linksMap;
+    }
     
     /**
      * Adds or replaces a link between a layer and a css scope.
@@ -122,7 +160,7 @@ export class FileState {
         // Create link
         let link = new LayerSelectorLink(layer, scope);
         // Persist it
-        this.storage.addLinkByLayer(link);
+        this.storage.addLink(link.ids);
         // Update views
         this.updateViewsWithLinks();
     }
@@ -132,9 +170,10 @@ export class FileState {
      * @param layer 
      */
     removeLayerLink(layer: FigmaLayer){
-        this.storage.removeLinkByLayer(layer);
-        // Update views
-        this.updateViewsWithLinks();
+        // this.storage.removeLink(layer.ids);
+        // // Update views
+        // this.updateViewsWithLinks();
+        console.warn('removeLayerLink not yet implemented');
     }
     
     /**
@@ -183,8 +222,9 @@ export class FileState {
                 let figmaFile = this.figmaFile;
                 
                 // Check if it's still the same file. User may have switched it in the meantime.
-                if(figmaFile.key === data.document.id){
-                    
+                // If no file is available, this is a first time sync.
+                if(!figmaFile || figmaFile.key === data.document.id){
+
                     // Check if the there is data and if it's is up to date. If not, parse received data.
                     if(!figmaFile || data.lastModified !== figmaFile.lastModified){
                         // Parse document
@@ -192,12 +232,12 @@ export class FileState {
                         // Store components
                         this.figmaFile = figmaFile;
                     }
-    
                     // Change status
                     this.status = Status.SYNCED;
                 }
             }).catch(reason => {
                 this.status = Status.ERROR;
+                console.warn(reason);
                 throw new Error('Something went wrong while fetching the data...');
             });
         } else {
@@ -215,7 +255,7 @@ export class FileState {
         // Update internal representation of the figma file
         this.storage.components = figmaFile;
         // Update treeview provider
-        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile, this.linksByLayer);
+        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile);
     }
 
     /**
@@ -253,6 +293,14 @@ export class FileState {
         if(figmaLayer){
             this.treeView.reveal(figmaLayer);
         }
+    }
+
+    /**
+     * Returns a layer object by its ID
+     * @param layerId 
+     */
+    getLayerById(layerId: string){
+        return this.figmaLayerProvider.treeItems[layerId];
     }
 
 

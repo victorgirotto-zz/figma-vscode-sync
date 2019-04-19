@@ -20,6 +20,10 @@
 				"title": "Sync a LESS file to a Figma file"
 			},
 			{
+				"command": "figmasync.removeFigmaSync",
+				"title": "Stop syncing this file with Figma"
+			},
+			{
 				"command": "figmasync.refreshComponents",
 				"title": "Refresh components",
 				"icon": {

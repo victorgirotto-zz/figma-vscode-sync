@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { FigmaFile } from '../figmafile';
-import { LayerSelectorLink, LinksMap } from '../link';
-import { FigmaLayer } from '../figmalayer';
+import { FigmaFile } from './figmafile';
+import { IdOrder } from './link';
+import { FigmaLayer } from './figmalayer';
 
 export class FileStorage {
     uri: string;
@@ -32,53 +32,52 @@ export class FileStorage {
      * Adds a link between a layer and a css scope
      * @param layer 
      */
-    addLinkByLayer(layer: LayerSelectorLink){
+    addLink(linkIds: string[]){
         // Get current links
-        let links = this.getLinksByLayer();
-        // Add the new link
-        links[layer.layerId] = layer;
-        // Update storage value
-        this.context.workspaceState.update(`links-${this.uri}`, links);
+        let links = this.links;
+        // Check if link already exists
+        let linkExists = links.some((storedLinkIds) => {
+            // Return true if both layer and scope ids are the same
+            return storedLinkIds[IdOrder.Layer] === linkIds[IdOrder.Layer] && 
+                storedLinkIds[IdOrder.Scope] === linkIds[IdOrder.Scope];
+        });
+
+        // If it doesn't, add the new link
+        if(!linkExists){
+            // Add the new link
+            links.push(linkIds);
+            // Update storage value
+            this.context.workspaceState.update(`links-${this.uri}`, links);
+        }
     }
 
     /**
      * Removes the link for a given layer
      * @param layerId 
      */
-    removeLinkByLayer(layer: FigmaLayer){
-        let links = this.getLinksByLayer();
-        // Delete links for this layer
-        delete links[layer.id];
+    removeLink(linkIds: string[]){
+        let links = this.links;
+        // Filter out the matching link
+        links.filter((storedLinkIds) => {
+            // Include in array if either element is different
+            return storedLinkIds[IdOrder.Layer] !== linkIds[IdOrder.Layer] || 
+                storedLinkIds[IdOrder.Scope] !== linkIds[IdOrder.Scope];
+        });
         // Update storage value
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
 
     /**
-     * Returns a LinksMap of links organized by layer ID
+     * Returns the stored array of link ids
      */
-    getLinksByLayer(): LinksMap {
-        let layerLinks = this.context.workspaceState.get<LinksMap>(`links-${this.uri}`);
-        if(layerLinks){
-            return layerLinks;
+    get links(): string[][] {
+        let links = this.context.workspaceState.get<string[][]>(`links-${this.uri}`);
+        if(links){
+            return links;
         }
-        return ({} as LinksMap);
-    }
-
-    /**
-     * Returns a LinksMap of links organized by selector ID
-     */
-    getLinksBySelector(): LinksMap{
-        let linksBySelector: LinksMap = {};
-        let linksByLayer = this.getLinksByLayer();
-        if(!linksByLayer){
-            return {};
+        else {
+            return [];
         }
-        // Build inverted index
-        for(let layerId in linksByLayer){
-            let link = linksByLayer[layerId];
-            linksBySelector[link.scopeId] = link;
-        }
-        return linksBySelector;
     }
 
     /**

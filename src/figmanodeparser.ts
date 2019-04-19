@@ -1,5 +1,5 @@
 import { FigmaUtil } from './util/figma-util';
-import { CssProperties } from './util/stylesheet';
+import { CssProperties } from './stylesheet';
 
 /**
  * 

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as postcss from 'postcss';
 import * as path from 'path';
-import { LinksMap, LayerSelectorLink } from '../link';
+import { LinksMap, LayerSelectorLink } from './link';
 
 // Type of css properties
 export type CssProperties = {[prop:string]: string};
@@ -14,19 +14,27 @@ const noopPlugin = postcss.plugin('postcss-noop', () => {
 });
 
 export class Stylesheet {
+    // Properties
     text: string;
     baseScope: StylesheetScope;
     version: number;
     decorations: vscode.TextEditorDecorationType[];
+    links: LinksMap;
+    private parsePromise?: postcss.LazyResult = undefined;
+    private parsedCallbacks: Function[] = [];
 
+    /**
+     * 
+     * @param editor Current editor
+     */
     constructor(
-        private editor: vscode.TextEditor, 
-        private links: LinksMap
+        private editor: vscode.TextEditor
     ){
         this.text = this.editor.document.getText();
         this.baseScope = new StylesheetScope('body');
         this.version = this.editor.document.version;
         this.decorations = [];
+        this.links = {};
         
         // Parse the file
         this.parseFile();
@@ -39,14 +47,40 @@ export class Stylesheet {
      */
     private parseFile(){
         const syntax = require('postcss-less');
-        postcss([noopPlugin]).process(this.text, { syntax: syntax, from: undefined }).then(result => {
+        this.parsePromise = postcss([noopPlugin]).process(this.text, { syntax: syntax, from: undefined });
+        this.parsePromise.then(result => {
             if(result && result.root && result.root.nodes){
                 // Create the scopes
                 this.createStyleSheetScopes(result.root.nodes, this.baseScope);
-                // Add decorations for links
-                this.updateLinks(this.links);
+                // Run parsed callbacks
+                this.runCallbacks();
             }
         });
+    }
+
+    /**
+     * Runs the callback functions for when the file is parsed
+     */
+    private runCallbacks(){
+        this.parsedCallbacks.forEach((fn)=>{
+            fn();
+        });
+        this.parsePromise = undefined;
+        this.parsedCallbacks = [];
+    }
+
+    /**
+     * Adds a function to be ran after the file has been parsed.
+     * If there is no parsing pending, the function will be ran immediatelly.
+     * @param fn 
+     */
+    addParsedFileCallback(fn: Function){
+        if(!this.parsePromise){
+            // THere is no pending parsing. Just run the function
+            fn();
+        } else {
+            this.parsedCallbacks.push(fn);
+        }
     }
 
     /**
@@ -107,11 +141,13 @@ export class Stylesheet {
         // Then, add the links
         this.links = links;
         for(let scopeId in this.links){
-            let link = this.links[scopeId];
-            let scope = this.getScope(link.scopeId);
-            if(scope){
-                this.addCodeDecoration(link, scope);
-            }
+            let links = this.links[scopeId];
+            links.forEach(link => {
+                let scope = this.getScope(link.scopeId);
+                if(scope){
+                    this.addCodeDecoration(link, scope);
+                }
+            });
         }
     }
 
@@ -180,7 +216,8 @@ export class Stylesheet {
     }
 
     /**
-     * 
+     * Gets a scope by it's full css selector
+     * TODO implement a scope map for faster access
      * @param selector full css selector, starting from root scope
      */
     getScope(selector: string): StylesheetScope | undefined{

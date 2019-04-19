@@ -1,26 +1,48 @@
 import { FigmaLayer } from "./figmalayer";
-import { StylesheetScope } from "./util/stylesheet";
+import { StylesheetScope } from "./stylesheet";
 
-export type LinksMap = { [key:string]: LayerSelectorLink };
+export type LinksMap = { [key:string]: LayerSelectorLink[] };
 
-export class LayerSelectorLink {
+export enum IdOrder {
+    Layer=0,
+    Scope=1,
+}
 
-    layerId: string;
-    layerName: string;
-    layerPath: string[];
+export class LayerSelectorLink {  
 
-    scopeId: string;
-    scopeName: string;
-    scopeLocalName: string;
+    layer: FigmaLayer;
+    scope: StylesheetScope;
 
     constructor(layer: FigmaLayer, scope: StylesheetScope){
-        this.layerId = layer.id;
-        this.layerName = layer.name;
-        this.layerPath = layer.path;
+        this.layer = layer;
+        this.scope = scope;
+    }
 
-        this.scopeId = scope.cssScopeName;
-        this.scopeName = scope.resolvedScopeName;
-        this.scopeLocalName = scope.selector;
+    get layerId(): string {
+        return this.layer.id;
+    }
+    
+    get layerName(): string {
+        return this.layer.name;
+    }
+    
+    get layerPath(): string[] {
+        return this.layer.path;
+    }
+
+    get scopeId(): string {
+        return this.scope.cssScopeName;
+    }
+    
+    get scopeName(): string {
+        return this.scope.selector;
+    }
+
+    /**
+     * Returns a string array with the index of the (1) layer and  (2) scope
+     */
+    get ids(): string[] {
+        return [this.layerId, this.scopeId];
     }
 
 }
