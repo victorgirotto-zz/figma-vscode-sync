@@ -138,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 */
 	let revealLayer = function(layerId: string){
 		state.revealLayerById(layerId);
-	}
+	};
 
 	/**
 	 * Instantiates a file state based on persisted data

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as postcss from 'postcss';
 import * as path from 'path';
 import { LinksMap, LayerSelectorLink } from './link';
+import { start } from 'repl';
 
 // Type of css properties
 export type CssProperties = {[prop:string]: string};
@@ -22,6 +23,7 @@ export class Stylesheet {
     links: LinksMap;
     private parsePromise?: postcss.LazyResult = undefined;
     private parsedCallbacks: Function[] = [];
+    private diagnostics!: vscode.DiagnosticCollection;
 
     /**
      * 
@@ -35,9 +37,18 @@ export class Stylesheet {
         this.version = this.editor.document.version;
         this.decorations = [];
         this.links = {};
+
+        // Get or create diagnostics collection
+        this.setDiagnosticsCollection();
         
         // Parse the file
         this.parseFile();
+    }
+
+    private setDiagnosticsCollection(){
+        if(!this.diagnostics){
+            this.diagnostics = vscode.languages.createDiagnosticCollection('figma');
+        }
     }
 
     /**
@@ -95,19 +106,27 @@ export class Stylesheet {
 
         // For each node, check their type and execute the appropriate action
         nodes.forEach(node => {
-            if(node.type === 'atrule' && (node as any).variable){ // Processing a variable  
+            // Calculate the editor range for the current node
+            let range = this.calculateRange(node);
+
+            // Process each kind of css token
+            if(node.type === 'atrule' && (node as any).variable){ 
+                // VARIABLE
                 // Add the variable to the current scope
-                let variableNode = node as any; // TODO This could probably be improved. I'm not sure how to handle the additions postcss-less does to the node type
-                scope.variables[variableNode] = variableNode.value;
+                let variableNode = node as any; // Using any so we can use less syntax properties
+                scope.variables[variableNode.name] = variableNode.value;
+                scope.addRange(variableNode.name, range);
             
-            } else if(node.type === 'decl'){ // Processing a property
+            } else if(node.type === 'decl'){ 
+                // PROPERTY
                 // Add the property to the current scope
                 scope.addProperty(node.prop, node.value);
+                scope.addRange(node.prop, range);
 
-            } else if(node.type === 'rule'){ // Processing a rule
+            } else if(node.type === 'rule'){ 
+                // RULE (SELECTOR)
                 let selector = node.selector;
                 let newScope = scope;
-                let range = this.calculateRange(node);
 
                 // Create a new scope if this is not the global scope
                 if(!globalRules.includes(selector)){
@@ -119,10 +138,7 @@ export class Stylesheet {
                     newScope.addRange(selector, range);
                 } else {
                     // This is the base scope. Add it's range
-                    let scope = this.getScope(selector);
-                    if(scope){
-                        scope.addRange(selector, range);
-                    }
+                    scope.addRange(selector, range);
                 }
                 
                 // If this node has children, process them
@@ -137,7 +153,7 @@ export class Stylesheet {
      */
     updateLinks(links: LinksMap){
         // First, dispose of the current decorations
-        this.clearDecorations();
+        this.clear();
         // Then, add the links
         this.links = links;
         for(let scopeId in this.links){
@@ -145,10 +161,28 @@ export class Stylesheet {
             links.forEach(link => {
                 let scope = this.getScope(link.scopeId);
                 if(scope){
+                    // Add decoration to selector
                     this.addCodeDecoration(link, scope);
+                    // Find differing properties and add warnings
+                    let different = scope.diffIntersectingCssProperties(link.layer.styles);
+                    this.addWarnings(scope, different);
                 }
             });
         }
+    }
+
+    /**
+     * Adds editor warning messages for properties within a scope
+     * @param scope 
+     * @param different 
+     */
+    addWarnings(scope: StylesheetScope, different: string[]){
+        let warnings: vscode.Diagnostic[] = [];
+        different.forEach(diff => {
+            let message = `Mismatch with Figma design. Expected ${diff}:XXX;`;
+            warnings.push(new vscode.Diagnostic(scope.ranges[diff], message, vscode.DiagnosticSeverity.Warning));
+        });
+        this.diagnostics.set(this.editor.document.uri, warnings);
     }
 
     /**
@@ -200,8 +234,6 @@ export class Stylesheet {
 			isWholeLine: false,
 			overviewRulerColor: '#7C62FF',
 			overviewRulerLane: vscode.OverviewRulerLane.Left,
-			gutterIconPath: path.join(__filename, '..', '..', '..', 'media', 'Sidebar', 'Active', 'component.svg'),
-            gutterIconSize: 'auto',
 			fontWeight: 'bolder',
 		});
     }
@@ -209,10 +241,16 @@ export class Stylesheet {
     /**
      * Removes all decorations currently in place
      */
-    clearDecorations() {
+    clear() {
+        // Remove decorations
         this.decorations.forEach(d => {
             d.dispose();
         });
+
+        // Remove diagnostics
+        // if(this.diagnostics){
+        //     this.diagnostics.dispose();
+        // }
     }
 
     /**
@@ -259,24 +297,20 @@ export class Stylesheet {
     /**
      * Based on the start position and token type, this method looks for the 
      * end character of the token and returns its position. If there is no end, returns undefined.
-     * @param type 
-     * @param startRange 
+     * @param node 
      */
     private calculateRange(node: postcss.ChildNode): vscode.Range | undefined {    
-        if(node.source && node.source.start){
+        if(node.source && node.source.start && node.source.end){
             let startPosition = new vscode.Position(node.source.start.line-1, node.source.start.column-1);
-    
-            // Get target character based on the token type
-            let targetChar = ((targetType:string) => {
-                switch(targetType){
-                    case 'rule':
-                        return '{';
-                    default:
-                        return ';';
-                }
-            })(node.type);
-    
-            // // Search for it
+            let endPosition = new vscode.Position(node.source.end.line-1, node.source.end.column-1);
+
+            // If this is not a rule, use the range given by postcss
+            if(node.type !== 'rule'){
+                return new vscode.Range(startPosition, endPosition);
+            }
+            
+            // Otherwise, we have to search for it since postcss's range goes all the way to the end of the block.
+            let targetChar = '{';
             let lineNumber = startPosition.line;
             let colNumber = startPosition.character;
             let nonWSColNumber = colNumber; // Keeps track of the latest non whitepsace character in the line
@@ -287,7 +321,7 @@ export class Stylesheet {
                     // Check if character is the correct one
                     if(lineText[colNumber] === targetChar){
                         // Found the character. Return the position
-                        let endPosition = new vscode.Position(lineNumber, nonWSColNumber);
+                        endPosition = new vscode.Position(lineNumber, nonWSColNumber);
                         return new vscode.Range(startPosition, endPosition);
                     }
                     // Update non whitespace column number
@@ -304,25 +338,6 @@ export class Stylesheet {
             } while(lineNumber < this.editor.document.lineCount);
         }
         return undefined;
-    }
-
-    /**
-     * This method compares two CssProperties objects and returns those that differ between them.
-     * Only properties that exist in both CssProperties instances will be considered.
-     * @param props1 
-     * @param props2 
-     */
-    static diffIntersectingCssProperties(props1: CssProperties, props2: CssProperties): string[]{
-        let different: string[] = [];
-        for(let prop in props1){
-            if(prop in props2){
-                // Found an intersecting property. Compare their values
-                if(props1[prop] !== props2[prop]){
-                    different.push(prop);
-                }
-            }
-        }
-        return different;
     }
 }
 
@@ -396,14 +411,6 @@ export class StylesheetScope {
 
     /**
      * 
-     * @param scopeSelector 
-     */
-    findScope(scopeSelector: string){
-        
-    }
-
-    /**
-     * 
      * @param variable 
      */
     resolveVariable(variable:string): string{
@@ -442,5 +449,25 @@ export class StylesheetScope {
         if(range){
             this.ranges[key] = range;
         }
+    }
+
+    /**
+     * This method compares two CssProperties objects and returns those that differ between them.
+     * Only properties that exist in both CssProperties instances will be considered.
+     * @param props1 
+     * @param otherProps 
+     */
+    diffIntersectingCssProperties(otherProps: CssProperties): string[]{
+        let thisProps = this.styles; 
+        let different: string[] = [];
+        for(let prop in thisProps){
+            if(prop in otherProps){
+                // Found an intersecting property. Compare their values
+                if(thisProps[prop] !== otherProps[prop]){
+                    different.push(prop);
+                }
+            }
+        }
+        return different;
     }
 }

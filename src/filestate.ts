@@ -81,7 +81,7 @@ export class FileState {
      */
     dispose(){
         // Remove decorations
-        this.stylesheet.clearDecorations();
+        this.stylesheet.clear();
     }
 
 
