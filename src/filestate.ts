@@ -215,6 +215,7 @@ export class FileState {
      * Fetches the figma file
      */
     private fetchAPIData(){
+        console.log('fetch');
         if(this.fileKey && this.APIKey){
             // Set status
             this.status = Status.SYNCING;

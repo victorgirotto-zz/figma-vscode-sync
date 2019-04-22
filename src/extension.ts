@@ -5,6 +5,8 @@ import { FileState } from './filestate';
 
 let state: FileState; // The FileState manages the persistant state for every file
 let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
+let documentEditTimeout: NodeJS.Timeout;
+let documentEditWait: number = 1000;
 
 export function activate(context: vscode.ExtensionContext) {
 	
@@ -142,6 +144,21 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
+	 * Reacts to a document change.
+	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
+	 */
+	let handleDocumentEdit = function(){
+		if(documentEditTimeout){
+			clearTimeout(documentEditTimeout);
+		}
+		// Wait a bit before reacting to change
+		documentEditTimeout = setTimeout(() => { 
+			switchContextToCurrentFile(); 
+			// console.log('handle');
+		}, documentEditWait);
+	};
+
+	/**
 	 * Instantiates a file state based on persisted data
 	 */
 	let switchContextToCurrentFile = function(){
@@ -168,6 +185,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile));
+	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(handleDocumentEdit));
+
 
 	// Start everything
 	switchContextToCurrentFile();
