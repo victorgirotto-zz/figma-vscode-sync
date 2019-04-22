@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
-import * as Figma from 'figma-js';
 import { CurrentFileUtil } from './util/current-file-util';
-import { FigmaFile } from './figmafile';
 import { FigmaLayer } from './figmalayer';
 import { FileState } from './filestate';
 
 let state: FileState; // The FileState manages the persistant state for every file
+let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
 
 export function activate(context: vscode.ExtensionContext) {
 	
@@ -136,8 +135,10 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Reveals a layer in the sidebar
 	 * @param layer 
 	 */
-	let revealLayer = function(layerId: string){
-		state.revealLayerById(layerId);
+	let revealLayer = function(args: any){
+		if('layerId' in args){
+			state.revealLayerById(args.layerId);
+		}
 	};
 
 	/**
@@ -151,25 +152,24 @@ export function activate(context: vscode.ExtensionContext) {
 				state.dispose();
 			}
 			// Instantiate state
-			state = new FileState(editor, context);
+			state = new FileState(editor, context, figmaDiagnostics);
 		}
 	};
+
+	// Initialize variables
+	figmaDiagnostics = vscode.languages.createDiagnosticCollection(`figma-sync`);
 
 	// Register Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', switchContextToCurrentFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', function(args: any){
-		if('layerId' in args){
-			revealLayer(args.layerId);
-		}
-	}));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile));
 
-	// Reset everything
+	// Start everything
 	switchContextToCurrentFile();
 }
 

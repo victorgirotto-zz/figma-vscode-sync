@@ -28,6 +28,7 @@ export class FileState {
     private context: vscode.ExtensionContext;
     private uri: vscode.Uri;
     private config: vscode.WorkspaceConfiguration;
+    private diagnostics: vscode.DiagnosticCollection;
     
     // Persisted properties API
     private storage!: FileStorage; // for persisting and retrieving data
@@ -42,11 +43,12 @@ export class FileState {
 	 * @param editor Currently open editor
 	 * @param context extension context
 	 */
-	constructor(editor: vscode.TextEditor, context: vscode.ExtensionContext){
+	constructor(editor: vscode.TextEditor, context: vscode.ExtensionContext, diagnostics: vscode.DiagnosticCollection){
         // Set vscode properties
         this.editor = editor;
         this.context = context;
         this.uri = this.editor.document.uri;
+        this.diagnostics = diagnostics;
         this.config = vscode.workspace.getConfiguration();
         // Load from storage
         this.load();
@@ -66,7 +68,7 @@ export class FileState {
         }
 		
 		// Instantiate view the stylesheet view manager
-        this.stylesheet = new Stylesheet(this.editor);
+        this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
         // Wait for the file parsing to end before continuing with loading
         this.stylesheet.addParsedFileCallback(()=>{
             // Load links

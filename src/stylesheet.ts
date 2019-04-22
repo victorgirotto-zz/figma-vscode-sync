@@ -23,32 +23,23 @@ export class Stylesheet {
     links: LinksMap;
     private parsePromise?: postcss.LazyResult = undefined;
     private parsedCallbacks: Function[] = [];
-    private diagnostics!: vscode.DiagnosticCollection;
 
     /**
      * 
      * @param editor Current editor
      */
     constructor(
-        private editor: vscode.TextEditor
+        private editor: vscode.TextEditor,
+        private diagnostics: vscode.DiagnosticCollection
     ){
         this.text = this.editor.document.getText();
         this.baseScope = new StylesheetScope('body');
         this.version = this.editor.document.version;
         this.decorations = [];
         this.links = {};
-
-        // Get or create diagnostics collection
-        this.setDiagnosticsCollection();
         
         // Parse the file
         this.parseFile();
-    }
-
-    private setDiagnosticsCollection(){
-        if(!this.diagnostics){
-            this.diagnostics = vscode.languages.createDiagnosticCollection('figma');
-        }
     }
 
     /**
@@ -152,8 +143,10 @@ export class Stylesheet {
      * @param links 
      */
     updateLinks(links: LinksMap){
-        // First, dispose of the current decorations
-        this.clear();
+        // First, dispose of the current decorations and diagnostic messages
+        this.clear();        
+        this.diagnostics.delete(this.editor.document.uri);
+        
         // Then, add the links
         this.links = links;
         for(let scopeId in this.links){
@@ -246,11 +239,6 @@ export class Stylesheet {
         this.decorations.forEach(d => {
             d.dispose();
         });
-
-        // Remove diagnostics
-        // if(this.diagnostics){
-        //     this.diagnostics.dispose();
-        // }
     }
 
     /**
