@@ -339,7 +339,7 @@ export class FileState {
      */
     get ignoreInternalLayers(): boolean {
         let ignore = this.config.get<boolean>(ignoreInternalLayersConfigName);
-        return ignore ? ignore : true;
+        return ignore ? ignore : false;
     }
 
     /**

@@ -4,6 +4,7 @@ import { FigmaFile, ComponentsMeta } from './figmafile';
 import { LinksMap, LayerSelectorLink } from './link';
 import { CssProperties } from './stylesheet';
 import { Parser } from './figmanodeparser';
+import { INSPECT_MAX_BYTES } from 'buffer';
 
 const internalLayerPrefix = '_';
 
@@ -32,7 +33,7 @@ export class FigmaLayer {
         }
         return this.node.children.map((c: FigmaLayer) => new FigmaLayer(c, this));
     }
-
+    
     get name(): string {
         return this.node.name;
     }
@@ -41,6 +42,40 @@ export class FigmaLayer {
         return this.node.type;
     }
 
+    /**
+     * Returns all children, replacing its unecessary children with non-unecessary descendents (see isUnecessary getter description)
+     */
+    getPrunedChildren(): FigmaLayer[] {
+        let children = this.children;
+        let initialLength = children.length;
+        console.log(`Pruned: ${this.name}`);
+
+        // Check if node has children
+        if(initialLength > 0){
+            let i = initialLength - 1;
+            while(i >= 0){
+                let child = children[i];
+                // Check if this child is unecessary and needs to be replaced
+                if(child.isUnecessaryLayer){
+                    // This child is unecessary. Replace it with non unecessary descendents.
+                    let grandChildren = child.getPrunedChildren(); 
+                    children.splice(i, 1, ...grandChildren);
+                    // Move index to end of children to prune the newly added descendents as well
+                    i = i + grandChildren.length - 1;
+                } else {
+                    // The child is not unecessary Decrease counter
+                    i--;
+                }
+            }
+        }
+        console.log(`END: ${this.name}`);
+        return children;
+    }
+
+    /**
+     * Returns an array of strings with the path between the root until the current node (inclusive).
+     * The root node will be the first item in the array, and the current item will be the last.
+     */
     get path(): string[] {
         // If this is the root, return only its own label
         if(!this.parent){
@@ -51,10 +86,42 @@ export class FigmaLayer {
     }
 
     /**
-     * Returns an array of FigmaLayers with only the children who
+     * returns the number of siblings this node has. Returns 0 if layer has no parent.
      */
-    getStyledChildren(): FigmaLayer[] {
-        throw Error('Not implemented yet');
+    get siblingCount(): number {
+        if(this.parent){
+            return this.parent.children.length - 1;
+        }
+        return 0;
+    }
+
+    get hasStyles(): boolean {
+        return Object.entries(this.styles).length !== 0;
+    }
+
+    /**
+     * Returns a boolean indicating whether this layer is uncessary or not. A layer is deemed unecessary if:
+     * 
+     * 1) it does not have styles of its own AND
+     *      2.a) It is the only child of its parent (this.siblingCount === 0) OR
+     *      2.b) It only has one child (this.children.length === 1)
+     */
+    get isUnecessaryLayer(): boolean {
+        return !this.hasStyles && (this.siblingCount === 0 || this.children.length === 1);
+    }
+
+    /**
+     * Returns a boolean indicating whether this layer is within a parent
+     */
+    get isWithinComponent(): boolean {
+        if (this.parent){
+            if(this.parent.type === 'COMPONENT'){
+                return true;
+            } else {
+                return this.parent.isWithinComponent;
+            }
+        }
+        return false;
     }
 }
 
@@ -154,25 +221,35 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      */
     getChildren(element?: FigmaLayer): vscode.ProviderResult<FigmaLayer[]> {
         if(this.treeItems){
-            let items: FigmaLayer[] = [];
-
+            let children: FigmaLayer[] = [];
+            
+            // Check whether this is a root node or not
             if(element){
-                // This is not the root node. Return the children. Ignore layers that do not have styles
-                items = element.children;
+                // Get the element's children
+                if(element.type === 'COMPONENT' || element.isWithinComponent){
+                    // If the children are within a component, prune them
+                    children = element.getPrunedChildren();
+                } else {
+                    // Otherwise, get all chidlren
+                    children = element.children;
+                }
             } else {
                 // This is the root node
-                items = this.rootItems;
+                children = this.rootItems;
             }
 
             // If figma sync is set to ignore internal layers, filter them out
             if(this.ignoreInternalLayers){
-                items = items.filter(e => {
-                    return e.name[0] !== internalLayerPrefix;
+                children = children.filter(layer => {
+                    return layer.name[0] !== internalLayerPrefix;
                 });
             } 
 
+            // Sort children alphabetically
+            children.sort((a,b) => a.name.localeCompare(b.name));
+
             // Return resolved promise with items
-            return Promise.resolve(items);
+            return Promise.resolve(children);
         }
     }    
 }
@@ -236,7 +313,7 @@ export class LayerTreeItem extends vscode.TreeItem {
     }
 
     get hasStyles(): boolean {
-        return Object.entries(this.layer.styles).length !== 0;
+        return this.layer.hasStyles;
     }
 
     get iconPath() {

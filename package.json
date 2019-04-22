@@ -71,7 +71,7 @@
 				},
 				"IgnoreInternalLayers": {
 					"type": "boolean",
-					"default": true,
+					"default": false,
 					"description": "Ignore layers that begin with '_' (underscore)"
 				} 
 			}
