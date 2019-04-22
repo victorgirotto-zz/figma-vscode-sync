@@ -48,7 +48,6 @@ export class FigmaLayer {
     getPrunedChildren(): FigmaLayer[] {
         let children = this.children;
         let initialLength = children.length;
-        console.log(`Pruned: ${this.name}`);
 
         // Check if node has children
         if(initialLength > 0){
@@ -68,7 +67,6 @@ export class FigmaLayer {
                 }
             }
         }
-        console.log(`END: ${this.name}`);
         return children;
     }
 
