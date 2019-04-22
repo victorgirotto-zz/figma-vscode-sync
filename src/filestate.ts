@@ -8,6 +8,7 @@ import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
+const ignoreInternalLayersConfigName = 'IgnoreInternalLayers';
 
 enum Status {
     SYNCING, // Waiting for data from Figma
@@ -252,7 +253,7 @@ export class FileState {
         // Update internal representation of the figma file
         this.storage.components = figmaFile;
         // Update treeview provider
-        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile);
+        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile, this.ignoreInternalLayers);
     }
 
     /**
@@ -302,7 +303,7 @@ export class FileState {
 
 
     /*============================
-        FILE & EXTENSION SETUP
+        FILE & EXTENSION SETUP, CONFIGs
     ==============================*/
     
     get fileName(): string | undefined {
@@ -334,6 +335,14 @@ export class FileState {
     }
 
     /**
+     * Returns a boolean indicating whether internal layers should be ignored. Defaults to true.
+     */
+    get ignoreInternalLayers(): boolean {
+        let ignore = this.config.get<boolean>(ignoreInternalLayersConfigName);
+        return ignore ? ignore : true;
+    }
+
+    /**
      * Attaches a file to this document
      */
     public attachFile(fileKey:string){
@@ -354,6 +363,7 @@ export class FileState {
         // Reload the views
         this.load();
     }
+
 
     /**
      * Sets the status of the extension. This will be reflected in the status bar

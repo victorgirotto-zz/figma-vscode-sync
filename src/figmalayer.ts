@@ -5,6 +5,8 @@ import { LinksMap, LayerSelectorLink } from './link';
 import { CssProperties } from './stylesheet';
 import { Parser } from './figmanodeparser';
 
+const internalLayerPrefix = '_';
+
 /**
  * Represents a Figma layer
  */
@@ -47,6 +49,13 @@ export class FigmaLayer {
         // Otherwise, return this label preceded by the parent's path
         return [...this.parent.path, this.name];
     }
+
+    /**
+     * Returns an array of FigmaLayers with only the children who
+     */
+    getStyledChildren(): FigmaLayer[] {
+        throw Error('Not implemented yet');
+    }
 }
 
 
@@ -61,15 +70,17 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     links!: LinksMap;
     treeItems: {[nodeId: string]: FigmaLayer}; // Direct access to any layer by ID
     rootItems: FigmaLayer[]; // List of root layers
+    ignoreInternalLayers: boolean;
 
     /**
      * Builds the treeview provider from a list of figma components and links
      * @param components 
      */
-    constructor(components?: FigmaFile){
+    constructor(components: FigmaFile | undefined, ignoreInternalLayers: boolean){
         this.treeItems = {};
         this.rootItems = [];
         this.links = {};
+        this.ignoreInternalLayers = ignoreInternalLayers;
     
         // Create map
         if(components){
@@ -144,13 +155,22 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     getChildren(element?: FigmaLayer): vscode.ProviderResult<FigmaLayer[]> {
         if(this.treeItems){
             let items: FigmaLayer[] = [];
+
             if(element){
-                // This is not the root node
+                // This is not the root node. Return the children. Ignore layers that do not have styles
                 items = element.children;
             } else {
                 // This is the root node
                 items = this.rootItems;
             }
+
+            // If figma sync is set to ignore internal layers, filter them out
+            if(this.ignoreInternalLayers){
+                items = items.filter(e => {
+                    return e.name[0] !== internalLayerPrefix;
+                });
+            } 
+
             // Return resolved promise with items
             return Promise.resolve(items);
         }
