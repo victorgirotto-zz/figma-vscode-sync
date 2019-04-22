@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaLayer } from './figmalayer';
 import { FileState } from './filestate';
+import { stat } from 'fs';
 
 let state: FileState; // The FileState manages the persistant state for every file
 let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
@@ -144,24 +145,36 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * Reacts to a document change.
+	 * Reacts to a document changes after a small delay.
 	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
 	 */
 	let handleDocumentEdit = function(){
 		if(documentEditTimeout){
 			clearTimeout(documentEditTimeout);
 		}
-		// Wait a bit before reacting to change
 		documentEditTimeout = setTimeout(() => { 
-			switchContextToCurrentFile(); 
-			// console.log('handle');
+			loadDocumentState(false); 
 		}, documentEditWait);
+	};
+
+	/**
+	 * Handles the event of a user switching to another editor
+	 */
+	let handleChangeEditor = function(){
+		loadDocumentState(true);
+	};
+
+	/**
+	 * Handlers the request to refresh components
+	 */
+	let refreshComponents = function(){
+		loadDocumentState(true);
 	};
 
 	/**
 	 * Instantiates a file state based on persisted data
 	 */
-	let switchContextToCurrentFile = function(){
+	let loadDocumentState = function(fetchData?: boolean){
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(editor){
 			// If there is already a state, dispose of it
@@ -170,6 +183,9 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			// Instantiate state
 			state = new FileState(editor, context, figmaDiagnostics);
+			if(fetchData){
+				state.fetchAPIData();
+			}
 		}
 	};
 
@@ -178,18 +194,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Register Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', switchContextToCurrentFile));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', refreshComponents));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 
 	// Event handlers
-	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(switchContextToCurrentFile));
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));
 	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(handleDocumentEdit));
 
-
 	// Start everything
-	switchContextToCurrentFile();
+	loadDocumentState(true);
 }
 
 export function deactivate() {}

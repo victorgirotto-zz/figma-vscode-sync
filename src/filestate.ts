@@ -61,11 +61,6 @@ export class FileState {
         // Load persisted data
 		this.storage = new FileStorage(this.uri.path, this.context);
         this.figmaFile = this.storage.components;
-        
-        // Check for updates on server if a file is connected
-        if(this.figmaFile){
-            this.fetchAPIData();
-        }
 		
 		// Instantiate view the stylesheet view manager
         this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
@@ -214,13 +209,12 @@ export class FileState {
     /**
      * Fetches the figma file
      */
-    private fetchAPIData(){
-        console.log('fetch');
-        if(this.fileKey && this.APIKey){
+    public fetchAPIData(){
+        if(this.documentIsSetup){
             // Set status
             this.status = Status.SYNCING;
             const client = Figma.Client({ personalAccessToken: this.APIKey });
-            client.file(this.fileKey).then(({ data }) => {
+            client.file(this.fileKey!).then(({ data }) => {
                 // Retrieve cache if any
                 let figmaFile = this.figmaFile;
                 
@@ -330,6 +324,13 @@ export class FileState {
      */
     get APIKey(): string | undefined {
         return this.config.get(APIKeyConfigName);
+    }
+
+    /**
+     * Checks whether the document is setup to sync with a figma document
+     */
+    get documentIsSetup(): boolean {
+        return this.fileKey !== undefined && this.APIKey !== undefined;
     }
 
     /**
