@@ -225,11 +225,12 @@ export class Stylesheet {
 	 */
 	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
-			// borderWidth: '0 0 0 1px',
-			// borderStyle: 'solid',
-            // borderColor: '#7C62FF',
             backgroundColor: '#312C4B',
-            color: '#A28FFF',
+            color: '#B4A8FF',
+            light: { // Invert colors for light theme
+                color: '#312C4B',
+                backgroundColor: '#B4A8FF'
+            },
 			isWholeLine: false,
 			overviewRulerColor: '#7C62FF',
 			overviewRulerLane: vscode.OverviewRulerLane.Left,
