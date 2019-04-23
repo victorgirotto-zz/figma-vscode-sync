@@ -62,6 +62,9 @@ export class FileState {
         // Load persisted data
 		this.storage = new FileStorage(this.uri.path, this.context);
         this.figmaFile = this.storage.components;
+        
+        // Set initial status bar
+        this.status = this.getDefaultStatus();
 		
 		// Instantiate view the stylesheet view manager
         this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
@@ -69,8 +72,6 @@ export class FileState {
         this.stylesheet.addParsedFileCallback(()=>{
             // Load links
             this.updateViewsWithLinks();
-            // Set initial status
-            this.status = this.getDefaultStatus();
         });
     }
 
@@ -368,6 +369,7 @@ export class FileState {
      * Sets the status of the extension. This will be reflected in the status bar
      */
     set status(status: Status){
+        // Create boilerplate function for showing the status bar with a message and command
         let showStatusBar = (text:string, command?:string) => {
             if(command){
                 FileState.statusBar.command = command;
@@ -383,7 +385,7 @@ export class FileState {
             case Status.SYNCING:
                 showStatusBar('$(repo-sync) Syncing with api.figma.com');
                 break;
-            case Status.SYNCED:
+                case Status.SYNCED:
                 showStatusBar(`$(check) Figma: ${this.fileName}`, 'figmasync.removeFigmaSync');
                 break;
             case Status.ERROR:

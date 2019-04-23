@@ -70,16 +70,36 @@ export class FigmaLayer {
     }
 
     /**
+     * Returns the first non-unecessary parent of a layer
+     */
+    getPrunedParent(): FigmaLayer | undefined {
+        if(this.parent){
+            // There is a parent. Check if it's unecessary
+            if(this.parent.isUnecessaryLayer){
+                // It's unecessary. Look at its parent.
+                return this.parent.getPrunedParent();
+            } else {
+                // Found non unecessary parent
+                return this.parent;
+            }
+        }
+        // No parent to return
+        return undefined;
+    }
+
+    /**
      * Returns an array of strings with the path between the root until the current node (inclusive).
      * The root node will be the first item in the array, and the current item will be the last.
      */
     get path(): string[] {
-        // If this is the root, return only its own label
-        if(!this.parent){
+        let parent = this.getPrunedParent();
+        if(parent === undefined){
+            // If this is the root, return only its own label
             return [this.name];
+        } else {
+            // Otherwise, return this label preceded by the parent's path
+            return [...parent.path, this.name];
         }
-        // Otherwise, return this label preceded by the parent's path
-        return [...this.parent.path, this.name];
     }
 
     /**
@@ -102,12 +122,13 @@ export class FigmaLayer {
     /**
      * Returns a boolean indicating whether this layer is uncessary or not. A layer is deemed unecessary if:
      * 
-     * 1) it does not have styles of its own AND
-     *      2.a) It is the only child of its parent (this.siblingCount === 0) OR
-     *      2.b) It only has one child (this.children.length === 1)
+     * 1) It is inside of a component AND
+     * 2) it does not have styles of its own AND
+     *      3.a) It is the only child of its parent (this.siblingCount === 0) OR
+     *      3.b) It only has one child (this.children.length === 1)
      */
     get isUnecessaryLayer(): boolean {
-        return !this.hasStyles && (this.siblingCount === 0 || this.children.length === 1);
+        return this.isWithinComponent && !this.hasStyles && (this.siblingCount === 0 || this.children.length === 1);
     }
 
     /**
@@ -212,7 +233,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param element 
      */
     getParent(element: FigmaLayer): FigmaLayer | undefined{
-        return element.parent;
+        return element.getPrunedParent();
     }
 
     /**
@@ -225,14 +246,8 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
             
             // Check whether this is a root node or not
             if(element){
-                // Get the element's children
-                if(element.type === 'COMPONENT' || element.isWithinComponent){
-                    // If the children are within a component, prune them
-                    children = element.getPrunedChildren();
-                } else {
-                    // Otherwise, get all chidlren
-                    children = element.children;
-                }
+                // Not the root. Return the children.
+                children = element.getPrunedChildren();
             } else {
                 // This is the root node
                 children = this.rootItems;

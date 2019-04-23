@@ -173,6 +173,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	/**
 	 * Instantiates a file state based on persisted data
+	 * @param fetchData (optional) boolean indicating whether data should be fetched from the server
 	 */
 	let loadDocumentState = function(fetchData?: boolean){
 		let editor = CurrentFileUtil.getCurrentFile();

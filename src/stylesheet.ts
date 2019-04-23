@@ -153,9 +153,6 @@ export class Stylesheet {
         for(let scopeId in this.links){
             let links = this.links[scopeId];
             links.forEach(link => {
-                console.log('Update link');
-                console.log(link);
-                console.log('\n');
                 let scope = this.getScope(link.scopeId);
                 if(scope){
                     // Add decoration to selector
