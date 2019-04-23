@@ -96,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let linkLayer = function(layer: FigmaLayer){
 		if(state.isLayerLinked(layer)){
 			// A link already exists. Prompt about removing it.
-			promptYesOrNo('Do you want to remove the link for this layer?', (result: string | undefined) => {
+			promptYesOrNo('Do you want to remove all links for this layer?', (result: string | undefined) => {
 				if(result && result === 'Yes'){
 					state.removeLayerLink(layer);
 				}

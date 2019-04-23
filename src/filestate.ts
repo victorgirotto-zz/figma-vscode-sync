@@ -168,10 +168,9 @@ export class FileState {
      * @param layer 
      */
     removeLayerLink(layer: FigmaLayer){
-        // this.storage.removeLink(layer.ids);
-        // // Update views
-        // this.updateViewsWithLinks();
-        console.warn('removeLayerLink not yet implemented');
+        this.storage.removeLayerLinks(layer);
+        // Update views
+        this.updateViewsWithLinks();
     }
     
     /**

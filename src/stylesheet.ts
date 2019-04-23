@@ -147,35 +147,42 @@ export class Stylesheet {
         this.clear();        
         this.diagnostics.delete(this.editor.document.uri);
         
-        // Then, add the links
+        // Then, add the links and generate diagnostic messages
+        let warnings: vscode.Diagnostic[] = [];
         this.links = links;
         for(let scopeId in this.links){
             let links = this.links[scopeId];
             links.forEach(link => {
+                console.log('Update link');
+                console.log(link);
+                console.log('\n');
                 let scope = this.getScope(link.scopeId);
                 if(scope){
                     // Add decoration to selector
                     this.addCodeDecoration(link, scope);
                     // Find differing properties and add warnings
                     let different = scope.diffIntersectingCssProperties(link.layer.styles);
-                    this.addWarnings(scope, different);
+                    warnings.push(...this.getWarnings(scope, different));
                 }
             });
         }
+
+        // Add the warning messages
+        this.diagnostics.set(this.editor.document.uri, warnings);
     }
 
     /**
-     * Adds editor warning messages for properties within a scope
+     * Generates editor warning messages for properties within a scope
      * @param scope 
      * @param different 
      */
-    addWarnings(scope: StylesheetScope, different: string[]){
+    getWarnings(scope: StylesheetScope, different: string[]): vscode.Diagnostic[] {
         let warnings: vscode.Diagnostic[] = [];
         different.forEach(diff => {
             let message = `Mismatch with Figma design. Expected ${diff}:XXX;`;
             warnings.push(new vscode.Diagnostic(scope.ranges[diff], message, vscode.DiagnosticSeverity.Warning));
         });
-        this.diagnostics.set(this.editor.document.uri, warnings);
+        return warnings;        
     }
 
     /**
@@ -221,9 +228,11 @@ export class Stylesheet {
 	 */
 	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
-			borderWidth: '0 0 1px 0',
-			borderStyle: 'solid',
-            borderColor: '#7C62FF',
+			// borderWidth: '0 0 0 1px',
+			// borderStyle: 'solid',
+            // borderColor: '#7C62FF',
+            backgroundColor: '#312C4B',
+            color: '#A28FFF',
 			isWholeLine: false,
 			overviewRulerColor: '#7C62FF',
 			overviewRulerLane: vscode.OverviewRulerLane.Left,

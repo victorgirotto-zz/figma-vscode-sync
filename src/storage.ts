@@ -55,15 +55,13 @@ export class FileStorage {
      * Removes the link for a given layer
      * @param layerId 
      */
-    removeLink(linkIds: string[]){
+    removeLayerLinks(layer: FigmaLayer){
         let links = this.links;
-        // Filter out the matching link
-        links.filter((storedLinkIds) => {
-            // Include in array if either element is different
-            return storedLinkIds[IdOrder.Layer] !== linkIds[IdOrder.Layer] || 
-                storedLinkIds[IdOrder.Scope] !== linkIds[IdOrder.Scope];
+        // Filter out all links that belong to this layer
+        links = links.filter((link) => {
+            return link[IdOrder.Layer] !== layer.id;
         });
-        // Update storage value
+        // Update storage value with the filtered link array
         this.context.workspaceState.update(`links-${this.uri}`, links);
     }
 

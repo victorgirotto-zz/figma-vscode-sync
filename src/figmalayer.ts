@@ -4,7 +4,6 @@ import { FigmaFile, ComponentsMeta } from './figmafile';
 import { LinksMap, LayerSelectorLink } from './link';
 import { CssProperties } from './stylesheet';
 import { Parser } from './figmanodeparser';
-import { INSPECT_MAX_BYTES } from 'buffer';
 
 const internalLayerPrefix = '_';
 
@@ -93,6 +92,9 @@ export class FigmaLayer {
         return 0;
     }
 
+    /**
+     * Returns a boolean indicating whether this layer has any styles or not
+     */
     get hasStyles(): boolean {
         return Object.entries(this.styles).length !== 0;
     }
