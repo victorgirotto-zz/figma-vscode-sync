@@ -42,6 +42,10 @@
 			{
 				"command": "figmasync.revealLayer",
 				"title": "Reveal Layer"
+			},
+			{
+				"command": "figmasync.showCssProperties",
+				"title": "Show CSS Properties"
 			}
 		],
 		"menus": {
@@ -90,6 +94,10 @@
 				{
 					"id": "figmaComponents",
 					"name": "Figma Components"
+				},
+				{
+					"id": "layerProperties",
+					"name": "CSS Properties"
 				}
 			]
 		}

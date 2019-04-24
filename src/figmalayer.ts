@@ -290,6 +290,11 @@ export class LayerTreeItem extends vscode.TreeItem {
         super(layer.name, collapsibleState);
         this.layer = layer;
         this.links = [];
+        this.command = {
+            command: 'figmasync.showCssProperties',
+            title: 'Show CSS Properties for this layer',
+            arguments: [layer]
+        };
     }
 
     get id(): string {
@@ -347,4 +352,25 @@ export class LayerTreeItem extends vscode.TreeItem {
             dark: path.join(__filename, '..', '..', 'media', 'sidebar', 'dark', folder, `${this.layer.type}.svg`)
         };
     }
+}
+
+
+export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
+
+    constructor(public properties: CssProperties){}
+
+    getTreeItem(element: string[]): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        let item = new vscode.TreeItem(element[0] + ':', vscode.TreeItemCollapsibleState.None);
+        item.description = element[1];
+        return item;
+    }
+    
+    getChildren(element?: string[]): vscode.ProviderResult<string[][]> {
+        let props: string[][] = [];
+        for(let prop in this.properties){
+            props.push([prop, this.properties[prop]]);
+        }
+        return props;
+    }
+
 }

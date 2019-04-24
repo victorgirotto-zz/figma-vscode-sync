@@ -145,6 +145,15 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
+	 * Shows the css properties for a layer in the sidebar
+	 * @param args 
+	 */
+	let showCssProperties = function(args: any){
+		let layer = args as FigmaLayer;
+		state.showCssProperties(layer);
+	}
+
+	/**
 	 * Reacts to a document changes after a small delay.
 	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
 	 */
@@ -199,6 +208,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));

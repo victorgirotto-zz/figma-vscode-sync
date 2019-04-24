@@ -3,7 +3,7 @@ import * as Figma from 'figma-js';
 import { FileStorage } from './storage';
 import { Stylesheet, StylesheetScope } from './stylesheet';
 import { FigmaFile } from './figmafile';
-import { FigmaLayerProvider, FigmaLayer } from './figmalayer';
+import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider } from './figmalayer';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
@@ -289,7 +289,12 @@ export class FileState {
     revealLayerById(layerId: string){
         let figmaLayer = this.figmaLayerProvider.treeItems[layerId];
         if(figmaLayer){
-            this.treeView.reveal(figmaLayer);
+            this.treeView.reveal(figmaLayer, {
+                select: true,
+                focus: true
+            }).then(()=>{
+                this.showCssProperties(figmaLayer);
+            });
         }
     }
 
@@ -299,6 +304,16 @@ export class FileState {
      */
     getLayerById(layerId: string){
         return this.figmaLayerProvider.treeItems[layerId];
+    }
+
+    /**
+     * Displays the CSS properties for a layer in the Sidebar CSS Properties view
+     * @param layer 
+     */
+    showCssProperties(layer: FigmaLayer){
+        vscode.window.createTreeView('layerProperties', {
+            treeDataProvider: new CssPropertiesProvider(layer.styles)
+        });
     }
 
 

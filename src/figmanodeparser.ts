@@ -89,10 +89,10 @@ export class Parser {
                     if (effect.type === 'INNER_SHADOW' || effect.type === 'DROP_SHADOW'){
                         // Drop shadows
                         var inset = effect.type === 'INNER_SHADOW' ? 'inset ' : ''; 
-                        css['box-shadow'] = inset + 
-                            this.px(effect.offset.x) + 
-                            this.px(effect.offset.y) + 
-                            this.px(effect.radius) + 
+                        css['box-shadow'] = inset + ' ' +
+                            this.px(effect.offset.x) + ' ' +
+                            this.px(effect.offset.y) + ' ' +
+                            this.px(effect.radius) + ' ' +
                             FigmaUtil.getColorString(effect.color);
                     }
                     // TODO handle blur
