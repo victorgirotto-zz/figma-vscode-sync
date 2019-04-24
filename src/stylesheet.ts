@@ -58,6 +58,9 @@ export class Stylesheet {
                 this.runCallbacks();
             }
         });
+        this.parsePromise.catch(error => {
+            console.warn('Malformed CSS');
+        });
     }
 
     /**
@@ -157,9 +160,8 @@ export class Stylesheet {
                 if(scope){
                     // Add decoration to selector
                     this.addCodeDecoration(link, scope);
-                    // Find differing properties and add warnings
-                    let different = scope.diffIntersectingCssProperties(link.layer.styles);
-                    warnings.push(...this.getWarnings(scope, different));
+                    // Add scope warnings
+                    warnings.push(...this.getScopeWarnings(scope, link.layer.styles));
                 }
             });
         }
@@ -171,13 +173,23 @@ export class Stylesheet {
     /**
      * Generates editor warning messages for properties within a scope
      * @param scope 
-     * @param different 
+     * @param layerStyles Reference CssProperties for the scope
      */
-    getWarnings(scope: StylesheetScope, different: CssProperties): vscode.Diagnostic[] {
+    getScopeWarnings(scope: StylesheetScope, layerStyles: CssProperties): vscode.Diagnostic[] {
         let warnings: vscode.Diagnostic[] = [];
+        // Find different and missing properties
+        let missing = scope.findMissingProperties(layerStyles);
+        let different = scope.diffIntersectingCssProperties(layerStyles);
+        // Create warnings for missing properties
+        for(let missingProp in missing){
+            let missingValue = layerStyles[missingProp];
+            let message = `Figma: missing ${missingProp}: ${missingValue};`;
+            warnings.push(new vscode.Diagnostic(scope.ranges[scope.selector], message, vscode.DiagnosticSeverity.Warning));
+        }
+        // Create warnings for differences
         for(let diffProp in different){
             let diffValue = different[diffProp];
-            let message = `Mismatch with Figma design. Expected ${diffProp}: ${diffValue};`;
+            let message = `Figma: expected ${diffProp}: ${diffValue};`;
             warnings.push(new vscode.Diagnostic(scope.ranges[diffProp], message, vscode.DiagnosticSeverity.Warning));
         }
         return warnings;        
@@ -345,7 +357,7 @@ export class StylesheetScope {
     variables: CssProperties;
     children: StylesheetScope[];
     ranges: {[key:string]: vscode.Range};
-    styles: CssProperties;
+    _styles!: CssProperties;
 
     /**
      * 
@@ -360,6 +372,22 @@ export class StylesheetScope {
         this.variables = {};
         this.children = [];
         this.ranges = {};
+    }
+
+    set styles(styles: CssProperties){
+        this._styles = styles;
+    }
+
+    /**
+     * Returns all styles for this scope, including its parent scopes'
+     */
+    get styles(): CssProperties {
+        let styles = this._styles;
+        if(this.parent){
+            // If there is a parent, join its styles
+            styles = {...this.parent.styles, ...styles};
+        }
+        return styles;
     }
 
     /**
@@ -433,7 +461,7 @@ export class StylesheetScope {
             // this is a variable. Resolve it.
             finalValue = this.resolveVariable(value.substring(1));
         }
-        this.styles[prop] = finalValue;
+        this._styles[prop] = finalValue;
     }
 
     /**
@@ -458,11 +486,28 @@ export class StylesheetScope {
         for(let prop in thisProps){
             if(prop in otherProps){
                 // Found an intersecting property. Compare their values
-                if(thisProps[prop] !== otherProps[prop]){
+                // tslint:disable-next-line: triple-equals (Intentional use of type conversion)
+                if(thisProps[prop] != otherProps[prop]){ 
                     different[prop] = otherProps[prop];
                 }
             }
         }
         return different;
+    }
+
+    /**
+     * Returns a CssProperties object with the props and values that exist in otherProps but not in this scope
+     * @param otherProps 
+     */
+    findMissingProperties(otherProps:CssProperties): CssProperties {
+        let thisStyles = this.styles;
+        
+        let missing: CssProperties = {};
+        for(let prop in otherProps){
+            if(!(prop in thisStyles)){
+                missing[prop] = otherProps[prop];
+            }
+        }
+        return missing;
     }
 }

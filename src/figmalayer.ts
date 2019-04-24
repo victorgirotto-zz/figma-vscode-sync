@@ -50,10 +50,12 @@ export class FigmaLayer {
         // Object doesn't have its own styles. Allow it to use its children styles IFF there are no conflicts between them
         let children = this.getPrunedChildren();
         let styles: CssProperties = {};
+
         // For each children, check their styles for conflicts
         for(let i = 0; i < children.length; i++){
             let child = children[i];
             let childStyles = child.styles;
+            
             // Check each prop in this child's styles
             for(let childProp in childStyles){
                 if(childProp in styles && childStyles[childProp] !== styles[childProp]){
