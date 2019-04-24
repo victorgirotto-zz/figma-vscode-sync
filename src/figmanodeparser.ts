@@ -40,6 +40,7 @@ export class Parser {
     handleProp(prop: string): CssProperties {
         let css: CssProperties = {};
         let value = this.node[prop];
+
         switch (prop) {
             
             case 'style':
@@ -52,13 +53,15 @@ export class Parser {
                 break;
 
             case 'fills':
-                
                 var prop = this.node.type === 'TEXT' ? 'color' : 'background-color';
                 // Array of fills {blendMode, type, color(rgba)}
                 for (let i = 0; i < value.length; i++) {
                     const fill = value[i];
                     if(fill.type === 'SOLID'){
-                        css[prop] = FigmaUtil.getColorString(fill.color);         
+                        let color = FigmaUtil.getColorString(fill);
+                        if(color){
+                            css[prop] = color;
+                        }
                     }
                 }
                 break;
@@ -67,8 +70,11 @@ export class Parser {
                 for (let i = 0; i < value   .length; i++) {
                     const stroke = value    [i];
                     if(stroke.type === 'SOLID'){
-                        css['border-style'] = 'solid';         
-                        css['border-color'] = FigmaUtil.getColorString(stroke.color);       
+                        let color = FigmaUtil.getColorString(stroke.color);
+                        if(color){
+                            css['border-style'] = 'solid';         
+                            css['border-color'] = color;        
+                        }
                     }
                 }
                 break;
