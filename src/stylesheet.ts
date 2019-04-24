@@ -241,14 +241,11 @@ export class Stylesheet {
 		return vscode.window.createTextEditorDecorationType({
             backgroundColor: '#312C4B',
             color: '#B4A8FF',
-            light: { // Invert colors for light theme
+            light: { 
                 color: '#312C4B',
                 backgroundColor: '#B4A8FF'
             },
 			isWholeLine: false,
-			overviewRulerColor: '#7C62FF',
-			overviewRulerLane: vscode.OverviewRulerLane.Left,
-			fontWeight: 'bolder',
 		});
     }
     
