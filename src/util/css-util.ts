@@ -47,6 +47,18 @@ export class CssUtil {
             }
         }
 
+        /*
+            FONT-FAMILY
+        */
+       if(prop === 'font-family'){
+           // Just make sure that the first font in the lists matches
+           let allFonts1 = value1.split(',');
+           let allFonts2 = value2.split(',');
+           if(allFonts1.length > 0 && allFonts2.length > 0){
+               return allFonts1[0].trim() === allFonts2[0].trim();
+           }
+       }
+
         // For unsupported properties, simply compare their regular values.
         // tslint:disable-next-line: triple-equals (intentional use of type conversion)
         return value1 == value2;
