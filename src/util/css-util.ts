@@ -21,6 +21,10 @@ export class CssUtil {
      * @param value2 The second value
      */
     static CompareCssProperty(prop:string, value1:any, value2:any): boolean {
+
+        /*
+            COLOR PROPERTIES
+        */
         if(prop.includes('color')){
             // Handle color comparisons by converting them both to RGBA
             let color1 = parseColor(value1).rgba;
@@ -59,23 +63,6 @@ export class CssUtil {
             newProps = {...newProps, ...cssprop.expandShorthandProperty(prop, props[prop])};
         }
         return newProps;
-    }
-
-    /**
-     * Returns the type of color used in the string
-     * @param color 
-     */
-    static GetRGBAColor(color: string): string{
-        if(color.startsWith('rgba(')){ return 'rgba'; }
-
-        // Other conversions
-        if(color.startsWith('#')){ return 'hex'; }
-        if(color.startsWith('rgb(')){ return 'rgb'; }
-        if(color.startsWith('hsl(')){ return 'hsl'; }
-        if(color.startsWith('hsla(')){ return 'hsla'; }
-
-        // If all else fails, treat it as a keyword
-        return 'keyword';
     }
 
     /**

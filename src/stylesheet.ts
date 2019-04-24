@@ -185,13 +185,13 @@ export class Stylesheet {
         for(let missingProp in missing){
             let missingValue = layerStyles[missingProp];
             let message = `Figma: missing ${missingProp}: ${missingValue};`;
-            warnings.push(new vscode.Diagnostic(scope.ranges[scope.selector], message, vscode.DiagnosticSeverity.Warning));
+            warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
         }
         // Create warnings for differences
         for(let diffProp in different){
             let diffValue = different[diffProp];
             let message = `Figma: expected ${diffProp}: ${diffValue};`;
-            warnings.push(new vscode.Diagnostic(scope.ranges[diffProp], message, vscode.DiagnosticSeverity.Warning));
+            warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
         }
         return warnings;        
     }
@@ -204,7 +204,7 @@ export class Stylesheet {
 		let editor = this.editor;
 		if(editor){
 			// Create range object
-            let range = scope.ranges[scope.selector];
+            let range = scope.getRange(scope.selector);
 
 			// Create layer path for hover information
             let layerPath = link.layerPath;
@@ -477,6 +477,13 @@ export class StylesheetScope {
         if(range){
             this.ranges[key] = range;
         }
+    }
+
+    getRange(rangeKey: string): vscode.Range {
+        if(rangeKey in this.ranges){
+            return this.ranges[rangeKey];
+        }
+        return this.ranges[this.selector];
     }
 
     /**
