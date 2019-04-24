@@ -35,7 +35,7 @@ export class LayerSelectorLink {
     }
     
     get scopeName(): string {
-        return this.scope.selector;
+        return this.scope.resolvedScopeName;
     }
 
     /**
