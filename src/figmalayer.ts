@@ -14,12 +14,12 @@ export class FigmaLayer {
 
     node: any;
     parent: FigmaLayer | undefined;
-    styles: CssProperties = {};
+    _styles: CssProperties = {};
 
     constructor(node: any, parent?: FigmaLayer) {
         this.node = node;
         this.parent = parent;
-        this.styles = new Parser(node).parse();
+        this._styles = new Parser(node).parse();
     }
 
     get id(): string {
@@ -39,6 +39,33 @@ export class FigmaLayer {
 
     get type(): string {
         return this.node.type;
+    }
+
+    get styles(): CssProperties {
+        if(Object.entries(this._styles).length !== 0){
+            // Object has its own styles. Return them.
+            return this._styles;
+        }
+        
+        // Object doesn't have its own styles. Allow it to use its children styles IFF there are no conflicts between them
+        let children = this.getPrunedChildren();
+        let styles: CssProperties = {};
+        // For each children, check their styles for conflicts
+        for(let i = 0; i < children.length; i++){
+            let child = children[i];
+            let childStyles = child.styles;
+            // Check each prop in this child's styles
+            for(let childProp in childStyles){
+                if(childProp in styles && childStyles[childProp] !== styles[childProp]){
+                    // Found a conflict. Return no styles.
+                    return {};
+                } else {
+                    // No conflict. Add property.
+                    styles[childProp] = childStyles[childProp];
+                }
+            }
+        }
+        return styles;
     }
 
     /**
@@ -113,7 +140,14 @@ export class FigmaLayer {
     }
 
     /**
-     * Returns a boolean indicating whether this layer has any styles or not
+     * Returns a boolean indicating whether this layer has its own styles or not
+     */
+    get hasOwnStyles(): boolean {
+        return Object.entries(this._styles).length !== 0;
+    }
+
+    /**
+     * Returns a boolean indicating whether this layer has any styles, either its own or inherited from children
      */
     get hasStyles(): boolean {
         return Object.entries(this.styles).length !== 0;
@@ -128,7 +162,7 @@ export class FigmaLayer {
      *      3.b) It only has one child (this.children.length === 1)
      */
     get isUnecessaryLayer(): boolean {
-        return this.isWithinComponent && !this.hasStyles && (this.siblingCount === 0 || this.children.length === 1);
+        return this.isWithinComponent && !this.hasOwnStyles && (this.siblingCount === 0 || this.children.length === 1);
     }
 
     /**
@@ -357,6 +391,9 @@ export class LayerTreeItem extends vscode.TreeItem {
 }
 
 
+/**
+ * TreeDataProvider for showing css properties for individual layers in the sidebar
+ */
 export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
 
     constructor(public properties: CssProperties){}
