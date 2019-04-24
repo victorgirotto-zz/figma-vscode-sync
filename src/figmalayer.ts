@@ -19,7 +19,7 @@ export class FigmaLayer {
     constructor(node: any, parent?: FigmaLayer) {
         this.node = node;
         this.parent = parent;
-        this._styles = FigmaUtil.getCssProperties(node);
+        this._styles = FigmaUtil.GetCssProperties(node);
     }
 
     get id(): string {

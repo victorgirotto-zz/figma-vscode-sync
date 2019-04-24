@@ -11,18 +11,18 @@ import { CssProperties } from '../stylesheet';
 
 export class FigmaUtil {
 
-    static getCssProperties(node: any): CssProperties{
+    static GetCssProperties(node: any): CssProperties{
         let css: CssProperties = {};
         for(let prop in node){
             if(node.hasOwnProperty(prop)){
                 // Handle the prop. If no handler exists for it, props will remain unchanged.
-                css = {...css, ...FigmaUtil.getCssFromNodeProp(prop, node)};
+                css = {...css, ...FigmaUtil.GetCssFromNodeProp(prop, node)};
             }
         }
         return css;
     }
 
-    static getCssFromNodeProp(prop: string, node: any): CssProperties{
+    private static GetCssFromNodeProp(prop: string, node: any): CssProperties{
         let css: CssProperties = {};
         let value = node[prop];
         switch (prop) {
@@ -30,9 +30,9 @@ export class FigmaUtil {
             case 'style':
                 css ={
                     'font-family': `'${value.fontFamily}'`,
-                    'font-size': FigmaUtil.px(value.fontSize),
+                    'font-size': FigmaUtil.Px(value.fontSize),
                     'font-weight': value.fontWeight,
-                    'line-height': FigmaUtil.px(value.lineHeightPx)
+                    'line-height': FigmaUtil.Px(value.lineHeightPx)
                 };
                 break;
 
@@ -42,7 +42,7 @@ export class FigmaUtil {
                 for (let i = 0; i < value.length; i++) {
                     const fill = value[i];
                     if(fill.type === 'SOLID'){
-                        let color = FigmaUtil.getColorString(fill);
+                        let color = FigmaUtil.GetColorString(fill);
                         if(color){
                             css[prop] = color;
                         }
@@ -54,7 +54,7 @@ export class FigmaUtil {
                 for (let i = 0; i < value   .length; i++) {
                     const stroke = value    [i];
                     if(stroke.type === 'SOLID'){
-                        let color = FigmaUtil.getColorString(stroke.color);
+                        let color = FigmaUtil.GetColorString(stroke.color);
                         if(color){
                             css['border-style'] = 'solid';         
                             css['border-color'] = color;        
@@ -66,12 +66,12 @@ export class FigmaUtil {
             case 'strokeWeight':
                 // Only add stroke weight if there are borders
                 if (node.strokes.length > 0){
-                    css = {'border-width': FigmaUtil.px(value)};
+                    css = {'border-width': FigmaUtil.Px(value)};
                 }
                 break;
 
             case 'cornerRadius':
-                css = {'border-radius': FigmaUtil.px(value)};
+                css = {'border-radius': FigmaUtil.Px(value)};
                 break;
 
             case 'effects':
@@ -80,10 +80,10 @@ export class FigmaUtil {
                         // Drop shadows
                         var inset = effect.type === 'INNER_SHADOW' ? 'inset ' : ''; 
                         css['box-shadow'] = inset + ' ' +
-                            FigmaUtil.px(effect.offset.x) + ' ' +
-                            FigmaUtil.px(effect.offset.y) + ' ' +
-                            FigmaUtil.px(effect.radius) + ' ' +
-                            FigmaUtil.getColorString(effect.color);
+                            FigmaUtil.Px(effect.offset.x) + ' ' +
+                            FigmaUtil.Px(effect.offset.y) + ' ' +
+                            FigmaUtil.Px(effect.radius) + ' ' +
+                            FigmaUtil.GetColorString(effect.color);
                     }
                     // TODO handle blur
                 });
@@ -97,7 +97,7 @@ export class FigmaUtil {
      * Returns a string with the number + px postfix
      * @param number Number
      */
-    static px(number:number){
+    static Px(number:number){
         return number + 'px';
     }
 
@@ -106,7 +106,7 @@ export class FigmaUtil {
     * 
     * @param color Figma.Color instance
     */
-    static getColorString(fill: Figma.Paint): string | undefined{
+    static GetColorString(fill: Figma.Paint): string | undefined{
         let color = fill.color;
         if(color){
             // Create rounding fn
@@ -133,7 +133,7 @@ export class FigmaUtil {
      * 
      * @param text the text from which the metadata should be extracted.
      */
-    static extractStringMetadata(text: string): string | undefined{
+    static ExtractStringMetadata(text: string): string | undefined{
         let bracketContent = text.match(/<([^\s>]+)(\s|>)+/);
         if(bracketContent && bracketContent.length > 0){
             return bracketContent[1];

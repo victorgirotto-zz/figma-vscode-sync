@@ -77,7 +77,7 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Ignore layers that begin with '_' (underscore)"
-				} 
+				}
 			}
 		},
 		"viewsContainers": {
@@ -118,7 +118,9 @@
 		"vscode": "^1.1.28"
 	},
 	"dependencies": {
+		"css-property-parser": "^1.0.6",
 		"figma-js": "^1.6.1",
+		"parse-color": "^1.0.0",
 		"postcss": "^7.0.14"
 	}
 }

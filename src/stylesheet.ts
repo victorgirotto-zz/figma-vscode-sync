@@ -3,6 +3,7 @@ import * as postcss from 'postcss';
 import * as path from 'path';
 import { LinksMap, LayerSelectorLink } from './link';
 import { start } from 'repl';
+import { CssUtil } from './util/css-util';
 
 // Type of css properties
 export type CssProperties = {[prop:string]: string};
@@ -434,8 +435,8 @@ export class StylesheetScope {
     }
 
     /**
-     * 
-     * @param variable 
+     * Resolves the name of a variable within the scope
+     * @param variable Variable name (without the 'at' prefix);
      */
     resolveVariable(variable:string): string{
         // First look in the current scope
@@ -451,17 +452,20 @@ export class StylesheetScope {
     }
 
     /**
-     * 
+     * Adds a property to the scope. If a variable is present, it will be resolved here.
      * @param prop 
      * @param value 
      */
     addProperty(prop:string, value:string){
-        let finalValue = value;
-        if(value[0] === '@'){
-            // this is a variable. Resolve it.
-            finalValue = this.resolveVariable(value.substring(1));
-        }
-        this._styles[prop] = finalValue;
+        // Resolve variables if any
+        let variables = CssUtil.GetVariablesInString(value);
+        variables.forEach((varName: string)=>{
+            let varValue = this.resolveVariable(varName);
+            value = value.replace(`@${varName}`, varValue);
+        });
+
+        // Add property to scope
+        this._styles[prop] = value;
     }
 
     /**
@@ -481,13 +485,15 @@ export class StylesheetScope {
      * @param otherProps 
      */
     diffIntersectingCssProperties(otherProps: CssProperties): CssProperties{
-        let thisProps = this.styles; 
         let different: CssProperties = {};
+        // Expand properties
+        let thisProps = CssUtil.ExpandProperties(this.styles); 
+        otherProps = CssUtil.ExpandProperties(otherProps); 
+        // Compare
         for(let prop in thisProps){
             if(prop in otherProps){
                 // Found an intersecting property. Compare their values
-                // tslint:disable-next-line: triple-equals (Intentional use of type conversion)
-                if(thisProps[prop] != otherProps[prop]){ 
+                if(!CssUtil.CompareCssProperty(prop, thisProps[prop], otherProps[prop])){ 
                     different[prop] = otherProps[prop];
                 }
             }
@@ -500,8 +506,10 @@ export class StylesheetScope {
      * @param otherProps 
      */
     findMissingProperties(otherProps:CssProperties): CssProperties {
-        let thisStyles = this.styles;
-        
+        // Expand properties
+        let thisStyles = CssUtil.ExpandProperties(this.styles); 
+        otherProps = CssUtil.ExpandProperties(otherProps); 
+        // Find missing
         let missing: CssProperties = {};
         for(let prop in otherProps){
             if(!(prop in thisStyles)){
