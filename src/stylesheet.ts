@@ -173,12 +173,13 @@ export class Stylesheet {
      * @param scope 
      * @param different 
      */
-    getWarnings(scope: StylesheetScope, different: string[]): vscode.Diagnostic[] {
+    getWarnings(scope: StylesheetScope, different: CssProperties): vscode.Diagnostic[] {
         let warnings: vscode.Diagnostic[] = [];
-        different.forEach(diff => {
-            let message = `Mismatch with Figma design. Expected ${diff}:XXX;`;
-            warnings.push(new vscode.Diagnostic(scope.ranges[diff], message, vscode.DiagnosticSeverity.Warning));
-        });
+        for(let diffProp in different){
+            let diffValue = different[diffProp];
+            let message = `Mismatch with Figma design. Expected ${diffProp}: ${diffValue};`;
+            warnings.push(new vscode.Diagnostic(scope.ranges[diffProp], message, vscode.DiagnosticSeverity.Warning));
+        }
         return warnings;        
     }
 
@@ -447,19 +448,18 @@ export class StylesheetScope {
     }
 
     /**
-     * This method compares two CssProperties objects and returns those that differ between them.
+     * This method compares two CssProperties objects and returns those in otherProps that differ between them.
      * Only properties that exist in both CssProperties instances will be considered.
-     * @param props1 
      * @param otherProps 
      */
-    diffIntersectingCssProperties(otherProps: CssProperties): string[]{
+    diffIntersectingCssProperties(otherProps: CssProperties): CssProperties{
         let thisProps = this.styles; 
-        let different: string[] = [];
+        let different: CssProperties = {};
         for(let prop in thisProps){
             if(prop in otherProps){
                 // Found an intersecting property. Compare their values
                 if(thisProps[prop] !== otherProps[prop]){
-                    different.push(prop);
+                    different[prop] = otherProps[prop];
                 }
             }
         }
