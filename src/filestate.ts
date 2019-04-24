@@ -271,7 +271,8 @@ export class FileState {
         this._figmaLayerProvider = provider;
         // Register the provider
         this.treeView = vscode.window.createTreeView('figmaComponents', {
-            treeDataProvider: this._figmaLayerProvider
+            treeDataProvider: this._figmaLayerProvider,
+            showCollapseAll: true
         });
     }
 
@@ -311,8 +312,14 @@ export class FileState {
      * @param layer 
      */
     showCssProperties(layer: FigmaLayer){
+        // PROBABLY REMOVE I'm not sure showing and hiding things is the best UX
+        // Set context variable to show or hide the view
+        // let selectedStyledItem = layer.hasStyles ? true : false;
+        // vscode.commands.executeCommand("setContext", "selectedStyledItem", selectedStyledItem);
+        
+        // Create provider 
         vscode.window.createTreeView('layerProperties', {
-            treeDataProvider: new CssPropertiesProvider(layer.styles)
+            treeDataProvider: new CssPropertiesProvider(layer.styles),
         });
     }
 

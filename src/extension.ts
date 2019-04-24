@@ -213,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));
 	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(handleDocumentEdit));
-
+	
 	// Start everything
 	loadDocumentState(true);
 }

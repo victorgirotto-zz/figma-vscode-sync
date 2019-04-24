@@ -295,20 +295,22 @@ export class LayerTreeItem extends vscode.TreeItem {
             title: 'Show CSS Properties for this layer',
             arguments: [layer]
         };
+        this.contextValue = layer.hasStyles ? 'styled' : 'unstyled';
     }
 
     get id(): string {
         return this.layer.id;
     }
 
-    set label(label:string){
-        // This seems to be necessary due to how the TreeItem constructor is implemented,
-        // but since I'm always reading the label from the underlying layer implementation,
-        // this isn't really necessary. So do nothing I guess.
-    }
+    /*  
+        This seems to be necessary due to how the TreeItem constructor is implemented,
+        but since I'm always reading the label from the underlying layer implementation,
+        this isn't really necessary. So do nothing I guess.
+    */
+    set label(label:string){}
 
     get tooltip(): string {
-        return JSON.stringify(this.layer.styles);
+        return this.id;
     }
 
     get label(): string {
@@ -372,5 +374,4 @@ export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
         }
         return props;
     }
-
 }

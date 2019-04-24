@@ -59,7 +59,7 @@
 			"view/item/context": [
 				{
 					"command": "figmasync.linkLayer",
-					"when": "view == figmaComponents",
+					"when": "view == figmaComponents && viewItem == styled",
 					"group": "inline"
 				}
 			]
