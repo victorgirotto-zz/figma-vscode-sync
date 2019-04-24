@@ -3,7 +3,7 @@ import * as path from 'path';
 import { FigmaFile, ComponentsMeta } from './figmafile';
 import { LinksMap, LayerSelectorLink } from './link';
 import { CssProperties } from './stylesheet';
-import { Parser } from './figmanodeparser';
+import { FigmaUtil } from './util/figma-util';
 
 const internalLayerPrefix = '_';
 
@@ -19,7 +19,7 @@ export class FigmaLayer {
     constructor(node: any, parent?: FigmaLayer) {
         this.node = node;
         this.parent = parent;
-        this._styles = new Parser(node).parse();
+        this._styles = FigmaUtil.getCssProperties(node);
     }
 
     get id(): string {
