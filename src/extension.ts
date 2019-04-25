@@ -3,6 +3,7 @@ import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaLayer } from './figmalayer';
 import { FileState } from './filestate';
 import { stat } from 'fs';
+import { LayerSelectorLink } from './link';
 
 let state: FileState; // The FileState manages the persistant state for every file
 let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
@@ -148,9 +149,17 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Shows the css properties for a layer in the sidebar
 	 * @param args 
 	 */
-	let showCssProperties = function(args: any){
-		let layer = args as FigmaLayer;
+	let showCssProperties = function(layer: FigmaLayer){
 		state.showCssProperties(layer);
+	};
+
+	/**
+	 * Highlights the linked elements in their respective views
+	 * @param args 
+	 */
+	let showLink = function(link: LayerSelectorLink){
+		state.revealLayerById(link.layerId);
+		state.highlightScopeByName(link.scopeId);
 	}
 
 	/**
@@ -209,6 +218,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showLink', showLink));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));

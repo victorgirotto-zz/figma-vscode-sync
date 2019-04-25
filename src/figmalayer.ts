@@ -417,3 +417,30 @@ export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
         return props;
     }
 }
+
+export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelectorLink>{
+
+    constructor(public links: LayerSelectorLink[]){}
+
+    getTreeItem(element: LayerSelectorLink): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        let item = new vscode.TreeItem(element.layerName, vscode.TreeItemCollapsibleState.None);
+        item.description = element.scopeName.replace(/\r?\n|\r/g, '');
+        item.iconPath = path.join(__filename, '..', '..', 'media', 'link.svg');
+        item.command = {
+            command: 'figmasync.showLink',
+            title: 'View linked elements',
+            arguments: [element]
+        };
+        return item;
+    }
+    
+    getChildren(element?: LayerSelectorLink): vscode.ProviderResult<LayerSelectorLink[]> {
+        let children: LayerSelectorLink[] = [];
+        if(!element){
+            // This is the root
+            children = this.links;
+        }
+        return children;
+    }
+
+}

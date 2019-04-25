@@ -239,11 +239,9 @@ export class Stylesheet {
 	 */
 	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
-            backgroundColor: '#312C4B',
             color: '#B4A8FF',
             light: { 
-                color: '#312C4B',
-                backgroundColor: '#B4A8FF'
+                color: '#312C4B'
             },
 			isWholeLine: false,
 		});
@@ -476,11 +474,22 @@ export class StylesheetScope {
         }
     }
 
+    /**
+     * Gets the editor range for a selector, property, or variable. If none is found, returns the scope's range scope.
+     * @param rangeKey 
+     */
     getRange(rangeKey: string): vscode.Range {
         if(rangeKey in this.ranges){
             return this.ranges[rangeKey];
         }
         return this.ranges[this.selector];
+    }
+    
+    /**
+     * Returns the range for the scope's selector
+     */
+    getSelectorRange(): vscode.Range {
+        return this.getRange(this.selector);
     }
 
     /**

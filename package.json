@@ -33,7 +33,7 @@
 			},
 			{
 				"command": "figmasync.linkLayer",
-				"title": "Connect Layer",
+				"title": "Link Layer",
 				"icon": {
 					"light": "media/link.svg",
 					"dark": "media/link.svg"
@@ -46,6 +46,10 @@
 			{
 				"command": "figmasync.showCssProperties",
 				"title": "Show CSS Properties"
+			},
+			{
+				"command": "figmasync.showLink",
+				"title": "Show linked elements"
 			}
 		],
 		"menus": {
@@ -92,12 +96,16 @@
 		"views": {
 			"figmaSync": [
 				{
+					"id": "linksManager",
+					"name": "Linked layers"
+				},
+				{
 					"id": "figmaComponents",
-					"name": "Figma Components"
+					"name": "Available Figma components"
 				},
 				{
 					"id": "layerProperties",
-					"name": "CSS Properties"
+					"name": "CSS properties"
 				}
 			]
 		}

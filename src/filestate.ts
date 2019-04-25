@@ -3,7 +3,7 @@ import * as Figma from 'figma-js';
 import { FileStorage } from './storage';
 import { Stylesheet, StylesheetScope } from './stylesheet';
 import { FigmaFile } from './figmafile';
-import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider } from './figmalayer';
+import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './figmalayer';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
@@ -96,6 +96,22 @@ export class FileState {
     }
 
     /**
+     * Returns an array representing all existing links between figma layers and selectors
+     */
+    get links(): LayerSelectorLink[] {
+        let linkIds = this.linksIds;
+        let links = linkIds.reduce((acc, ids) => {
+            let layer = this.getLayerById(ids[IdOrder.Layer]);
+            let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
+            if(scope){
+                acc.push(new LayerSelectorLink(layer, scope));
+            }
+            return acc;
+        }, [] as LayerSelectorLink[]);
+        return links;
+    }
+
+    /**
      * Returns a set of all existing links indexed by the layer id
      */
     get linksByLayer(): LinksMap {
@@ -178,6 +194,13 @@ export class FileState {
      * Updates the views with the current links
      */
     updateViewsWithLinks(){
+        // Update links manager view
+        vscode.window.createTreeView('linksManager', {
+            treeDataProvider: new LinksManagerProvider(this.links),
+            showCollapseAll: true
+        });
+        
+        // Update links in views
         this.figmaLayerProvider.updateLinks(this.linksByLayer);
         this.stylesheet.updateLinks(this.linksBySelector);
     }
@@ -200,7 +223,20 @@ export class FileState {
      */
 	getScopeByFullSelector(fullSelector: string) {
 		return this.stylesheet.getScope(fullSelector);
-	}
+    }
+    
+    /**
+     * Highlights a scope in the editor
+     * @param scopeName 
+     */
+    highlightScopeByName(scopeName: string){
+        let scope = this.stylesheet.getScope(scopeName);
+        if(scope){
+            let scopeRange = scope.getSelectorRange();
+            this.editor.revealRange(scopeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            this.editor.selection = new vscode.Selection(scopeRange.start, scopeRange.end);
+        }
+    }
 
 
     /*=====================================
@@ -288,12 +324,11 @@ export class FileState {
      * @param layerId 
      */
     revealLayerById(layerId: string){
-        console.log(layerId);
         let figmaLayer = this.figmaLayerProvider.treeItems[layerId];
         if(figmaLayer){
             this.treeView.reveal(figmaLayer, {
                 select: true,
-                focus: true
+                focus: false
             }).then(()=>{
                 this.showCssProperties(figmaLayer);
             });
@@ -323,6 +358,8 @@ export class FileState {
             treeDataProvider: new CssPropertiesProvider(layer.styles),
         });
     }
+
+
 
 
     /*============================
