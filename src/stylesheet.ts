@@ -239,10 +239,12 @@ export class Stylesheet {
 	 */
 	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
 		return vscode.window.createTextEditorDecorationType({
-            color: '#B4A8FF',
-            light: { 
-                color: '#312C4B'
+            color: '#917AFF',
+            light: {
+                color: '#7357FF'
             },
+            gutterIconPath: path.join(__filename, '..', '..', 'media', 'guttericon.svg'),
+            gutterIconSize: 'auto',
 			isWholeLine: false,
 		});
     }

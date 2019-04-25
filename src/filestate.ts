@@ -103,7 +103,7 @@ export class FileState {
         let links = linkIds.reduce((acc, ids) => {
             let layer = this.getLayerById(ids[IdOrder.Layer]);
             let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
-            if(scope){
+            if(scope && layer){
                 acc.push(new LayerSelectorLink(layer, scope));
             }
             return acc;
@@ -339,8 +339,12 @@ export class FileState {
      * Returns a layer object by its ID
      * @param layerId 
      */
-    getLayerById(layerId: string){
-        return this.figmaLayerProvider.treeItems[layerId];
+    getLayerById(layerId: string): FigmaLayer | undefined{
+        let items = this.figmaLayerProvider.treeItems;
+        if(layerId in items){
+            return items[layerId];
+        }
+        return undefined;
     }
 
     /**
