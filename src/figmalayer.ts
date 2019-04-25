@@ -220,7 +220,10 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      */
     updateLinks(links: LinksMap){
         this.links = links;
-        this.refresh();
+        // Refresh each layer
+        for(let layerId in links){
+            this.refresh(links[layerId][0].layer);
+        }
     }
 
     /**
@@ -245,7 +248,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     }
 
     /**
-     * Refreshes a layer in the view
+     * Refreshes a layer in the view. If no layer is specified, refreshes everything.
      * @param layer 
      */
     refresh(layer?: FigmaLayer){

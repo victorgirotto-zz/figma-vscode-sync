@@ -288,6 +288,7 @@ export class FileState {
      * @param layerId 
      */
     revealLayerById(layerId: string){
+        console.log(layerId);
         let figmaLayer = this.figmaLayerProvider.treeItems[layerId];
         if(figmaLayer){
             this.treeView.reveal(figmaLayer, {
