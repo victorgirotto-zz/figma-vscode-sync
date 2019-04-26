@@ -180,6 +180,19 @@ export class FigmaLayer {
         }
         return false;
     }
+
+    /**
+     * Returns a formatted string with the layer's properties.
+     * @indent number of tabs before the property. 
+     */
+    getFormattedStyles(indent?: number): string{
+        let tab = indent ? '\t'.repeat(indent) : '';
+        let styles = '';
+        for(let prop in this.styles){
+            styles += `${tab}${prop}: ${this.styles[prop]};\n`;
+        }
+        return styles;
+    }
 }
 
 

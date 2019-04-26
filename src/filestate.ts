@@ -386,9 +386,9 @@ export class FileState {
 
 
 
-    /*============================
+    /*====================================
         FILE & EXTENSION SETUP, CONFIGs
-    ==============================*/
+    ======================================*/
     
     get fileName(): string | undefined {
         if(!this.figmaFile){

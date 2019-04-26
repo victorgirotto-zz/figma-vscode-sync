@@ -50,6 +50,18 @@
 			{
 				"command": "figmasync.showLink",
 				"title": "Show linked elements"
+			},
+			{
+				"command": "figmasync.openInFigma",
+				"title": "View in Figma"
+			},
+			{
+				"command": "figmasync.copytoclipboard",
+				"title": "Copy to clipboard",
+				"icon": {
+					"light": "media/clipboard.svg",
+					"dark": "media/clipboard.svg"
+				}
 			}
 		],
 		"menus": {
@@ -59,6 +71,11 @@
 					"command": "figmasync.refreshComponents",
 					"when": "view == figmaComponents",
 					"group": "navigation"
+				},
+				{
+					"command": "figmasync.copytoclipboard",
+					"when": "view == layerProperties",
+					"group": "navigation"
 				}
 			],
 			"view/item/context": [
@@ -66,6 +83,10 @@
 					"command": "figmasync.linkLayer",
 					"when": "view == figmaComponents && viewItem == styled",
 					"group": "inline"
+				},
+				{
+					"command": "figmasync.openInFigma",
+					"when": "view == figmaComponents"
 				}
 			]
 		},

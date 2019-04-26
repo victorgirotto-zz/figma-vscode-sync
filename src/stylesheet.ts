@@ -209,7 +209,8 @@ export class Stylesheet {
 			// Create layer path for hover information
             let args = JSON.stringify([{layerId: link.layerId}]);
 			let hoverMessageMarkdown = new vscode.MarkdownString(
-				`Linked with Figma layer [\`${link.layerName}\`](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")`
+                `Linked with [${link.layerName}](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")`
+                // link.layer.getFormattedStyles(1)
             );
             // Enable links in the markdown string
             hoverMessageMarkdown.isTrusted = true;

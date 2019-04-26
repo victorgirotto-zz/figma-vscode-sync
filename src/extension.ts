@@ -190,6 +190,22 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
+	 * Copies a 
+	 */
+	let copyToClipboard = function(args: any){
+		console.log('copy');
+		console.log(args);
+	}
+
+	/**
+	 * Opens a layer in figma
+	 */
+	let openInFigma = function(layer: FigmaLayer){
+		console.log(layer.id);
+		vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${state.fileKey}/?node-id=${layer.id}`));
+	};
+
+	/**
 	 * Instantiates a file state based on persisted data
 	 * @param fetchData (optional) boolean indicating whether data should be fetched from the server
 	 */
@@ -219,6 +235,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showLink', showLink));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.copytoclipboard', copyToClipboard));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.openInFigma', openInFigma));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));
