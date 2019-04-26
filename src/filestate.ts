@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
 import { FileStorage } from './storage';
-import { Stylesheet, StylesheetScope } from './stylesheet';
+import { Stylesheet, StylesheetScope, CssProperties } from './stylesheet';
 import { FigmaFile } from './figmafile';
 import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './figmalayer';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
@@ -63,8 +63,10 @@ export class FileState {
 		this.storage = new FileStorage(this.uri.path, this.context);
         this.figmaFile = this.storage.components;
         
-        // Set initial status bar
+        // Set initial view states
         this.status = this.getDefaultStatus();
+        this.createCssPropertiesProvider();
+        this.createLinksManagerProvider();
 		
 		// Instantiate view the stylesheet view manager
         this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
@@ -195,14 +197,22 @@ export class FileState {
      */
     updateViewsWithLinks(){
         // Update links manager view
-        vscode.window.createTreeView('linksManager', {
-            treeDataProvider: new LinksManagerProvider(this.links),
-            showCollapseAll: true
-        });
+        this.createLinksManagerProvider(this.links);
         
         // Update links in views
         this.figmaLayerProvider.updateLinks(this.linksByLayer);
         this.stylesheet.updateLinks(this.linksBySelector);
+    }
+
+    /**
+     * Creates the provider for the links manager view
+     * @param links 
+     */
+    createLinksManagerProvider(links?: LayerSelectorLink[]){
+        vscode.window.createTreeView('linksManager', {
+            treeDataProvider: new LinksManagerProvider(links),
+            showCollapseAll: true
+        });
     }
 
 
@@ -246,7 +256,7 @@ export class FileState {
     /**
      * Fetches the figma file
      */
-    public fetchAPIData(){
+    public fetchAPIData(): boolean{
         if(this.documentIsSetup){
             // Set status
             this.status = Status.SYNCING;
@@ -274,11 +284,13 @@ export class FileState {
                 console.warn(reason);
                 throw new Error('Something went wrong while fetching the data...');
             });
-        } else {
-            // Update status
-            this.status = Status.ERROR;
-            throw new Error('Either the fileKey or the APIKey are not set');
+
+            // Request successfully submited
+            return true;
         }
+
+        // File not set up. 
+        return false;
     }
 
     /**
@@ -358,8 +370,16 @@ export class FileState {
         // vscode.commands.executeCommand("setContext", "selectedStyledItem", selectedStyledItem);
         
         // Create provider 
+        this.createCssPropertiesProvider(layer.styles);
+    }
+
+    /**
+     * Creates a the provider for the css properties view
+     * @param styles
+     */
+    createCssPropertiesProvider(styles?: CssProperties){
         vscode.window.createTreeView('layerProperties', {
-            treeDataProvider: new CssPropertiesProvider(layer.styles),
+            treeDataProvider: new CssPropertiesProvider(styles)
         });
     }
 

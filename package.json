@@ -53,6 +53,7 @@
 			}
 		],
 		"menus": {
+			
 			"view/title": [
 				{
 					"command": "figmasync.refreshComponents",

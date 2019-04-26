@@ -401,7 +401,7 @@ export class LayerTreeItem extends vscode.TreeItem {
  */
 export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
 
-    constructor(public properties: CssProperties){}
+    constructor(public properties?: CssProperties){}
 
     getTreeItem(element: string[]): vscode.TreeItem | Thenable<vscode.TreeItem> {
         let item = new vscode.TreeItem(element[0] + ':', vscode.TreeItemCollapsibleState.None);
@@ -420,7 +420,7 @@ export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
 
 export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelectorLink>{
 
-    constructor(public links: LayerSelectorLink[]){}
+    constructor(public links?: LayerSelectorLink[]){}
 
     getTreeItem(element: LayerSelectorLink): vscode.TreeItem | Thenable<vscode.TreeItem> {
         let item = new vscode.TreeItem(element.layerName, vscode.TreeItemCollapsibleState.None);
@@ -436,7 +436,7 @@ export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelect
     
     getChildren(element?: LayerSelectorLink): vscode.ProviderResult<LayerSelectorLink[]> {
         let children: LayerSelectorLink[] = [];
-        if(!element){
+        if(!element && this.links){
             // This is the root
             children = this.links;
         }
