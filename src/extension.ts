@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { CurrentFileUtil } from './util/current-file-util';
-import { FigmaLayer } from './figmalayer';
-import { FileState } from './filestate';
+import { FigmaLayer } from './sidebar';
+import { WorkspaceState as WorkspaceState } from './workspacestate';
 import { stat } from 'fs';
 import { LayerSelectorLink } from './link';
 
-let state: FileState; // The FileState manages the persistant state for every file
+let state: WorkspaceState; // The FileState manages the persistant state for every file
 let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
 let documentEditTimeout: NodeJS.Timeout;
 let documentEditWait: number = 1000;
@@ -21,47 +21,34 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param apiKey the figma file key. If none is supplied, this method will look into the workspace data and ultimately prompt the user. 	
 	 */
 	let setupFile = function(apiKey?: string){
-		// Check if a less file is currently open
-		if(!CurrentFileUtil.isFileLanguageID('less')){
-			// A LESS file is not open
-			vscode.window.showErrorMessage('You can only run this command on a LESS file.');
-			return;
-		}
-		
-		// A LESS file is open. Begin setup.
-		const fileURI = CurrentFileUtil.getOpenFileURIPath();
-		if (fileURI){
-			const config = vscode.workspace.getConfiguration();
-			const token = apiKey ? apiKey : config.get('APIKey') as string;
-			const fileKey = state.fileKey;
+		const config = vscode.workspace.getConfiguration();
+		const token = apiKey ? apiKey : config.get('APIKey') as string;
 
-			// Check for the API token
-			if(!token){
-				// No API Key has been set. Prompt user for it.
-				vscode.window.showInputBox({
-					prompt: 'Enter your API Key. You can generate an API key by going into Figma > Account Settings > Personal Access Token.' ,
-					placeHolder: 'API Key'
-				}).then((APIKey) => {
-					if(APIKey){
-						// Update settings with API key and re-run the file
-						config.update('APIKey', APIKey).then(()=>setupFile(APIKey));
-					}
-				});
-				return;
-			}
-
-			// Always prompt for file key. If it already exists, populate the prompt with it.
+		// Check for the API token
+		if(!token){
+			// No API Key has been set. Prompt user for it.
 			vscode.window.showInputBox({
-				prompt: 'Enter the key for the file you want to sync with. You can get this from the file\'s URL.',
-				placeHolder: 'File key',
-				value: fileKey
-			}).then((fileKey) => {
-				if(fileKey){
-					// Attach the file
-					state.attachFile(fileKey);
+				prompt: 'Enter your API Key. You can generate an API key by going into Figma > Account Settings > Personal Access Token.' ,
+				placeHolder: 'API Key'
+			}).then((APIKey) => {
+				if(APIKey){
+					// Update settings with API key and re-run the file
+					config.update('APIKey', APIKey).then(()=>setupFile(APIKey));
 				}
 			});
+			return;
 		}
+
+		// Always prompt for file key. If it already exists, populate the prompt with it.
+		vscode.window.showInputBox({
+			prompt: 'Enter the key for the file you want to sync with. You can get this from the file\'s URL.',
+			placeHolder: 'File key',
+		}).then((fileKey) => {
+			if(fileKey){
+				// Attach the file
+				state.connectFigmaFileKey(fileKey);
+			}
+		});
 	};
 
 	/**
@@ -69,12 +56,12 @@ export function activate(context: vscode.ExtensionContext) {
 	 */
 	let removeFigmaSync = function(){
 		// Removes figma sync
-		promptYesOrNo("Remove the connection between this file and Figma?", (result: string | undefined) => {
-			if(result && result.toLowerCase() === 'yes'){
-				// Remove files
-				state.detachFile();
-			}	
-		});
+		// promptYesOrNo("Remove the connection between this file and Figma?", (result: string | undefined) => {
+		// 	if(result && result.toLowerCase() === 'yes'){
+		// 		// Remove files
+		// 		state.detachFile();
+		// 	}	
+		// });
 	};
 
 	/**
@@ -160,66 +147,62 @@ export function activate(context: vscode.ExtensionContext) {
 	let showLink = function(link: LayerSelectorLink){
 		state.revealLayerById(link.layerId);
 		state.highlightScopeByName(link.scopeId);
-	}
-
-	/**
-	 * Reacts to a document changes after a small delay.
-	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
-	 */
-	let handleDocumentEdit = function(){
-		if(documentEditTimeout){
-			clearTimeout(documentEditTimeout);
-		}
-		documentEditTimeout = setTimeout(() => { 
-			loadDocumentState(false); 
-		}, documentEditWait);
 	};
-
-	/**
-	 * Handles the event of a user switching to another editor
-	 */
-	let handleChangeEditor = function(){
-		loadDocumentState(true);
-	};
-
-	/**
-	 * Handlers the request to refresh components
-	 */
-	let refreshComponents = function(){
-		loadDocumentState(true);
-	};
-
+	
 	/**
 	 * Copies a 
 	 */
 	let copyToClipboard = function(args: any){
 		console.log('copy');
 		console.log(args);
-	}
+	};
 
 	/**
 	 * Opens a layer in figma
 	 */
 	let openInFigma = function(layer: FigmaLayer){
-		console.log(layer.id);
-		vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${state.fileKey}/?node-id=${layer.id}`));
+		
+		// vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${state.fileKey}/?node-id=${layer.id}`));
+	};
+
+	/**
+	 * Reacts to a document changes after a small delay.
+	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
+	 */
+	let handleDocumentEdit = function(){
+		// if(documentEditTimeout){
+		// 	clearTimeout(documentEditTimeout);
+		// }
+		// documentEditTimeout = setTimeout(() => { 
+		// 	loadWorkspaceState(false); 
+		// }, documentEditWait);
+	};
+
+	/**
+	 * Handlers the request to refresh components
+	 */
+	let refreshComponents = function(){
+		loadWorkspaceState(true);
+	};
+
+	/**
+	 * Handles the event of a user switching to another editor
+	 */
+	let handleChangeEditor = function(){
+		loadWorkspaceState(true);
 	};
 
 	/**
 	 * Instantiates a file state based on persisted data
 	 * @param fetchData (optional) boolean indicating whether data should be fetched from the server
 	 */
-	let loadDocumentState = function(fetchData?: boolean){
+	let loadWorkspaceState = function(fetchData?: boolean){
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(editor){
-			// If there is already a state, dispose of it
-			if(state){
-				state.dispose();
-			}
 			// Instantiate state
-			state = new FileState(editor, context, figmaDiagnostics);
+			state = new WorkspaceState(editor, context, figmaDiagnostics);
 			if(fetchData){
-				state.fetchAPIData();
+				state.fetchAllFigmaFiles();
 			}
 		}
 	};
@@ -243,7 +226,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(handleDocumentEdit));
 	
 	// Start everything
-	loadDocumentState(true);
+	loadWorkspaceState(true);
 }
 
 export function deactivate() {}

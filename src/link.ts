@@ -1,4 +1,4 @@
-import { FigmaLayer } from "./figmalayer";
+import { FigmaLayer } from "./sidebar";
 import { StylesheetScope } from "./stylesheet";
 
 export type LinksMap = { [key:string]: LayerSelectorLink[] };

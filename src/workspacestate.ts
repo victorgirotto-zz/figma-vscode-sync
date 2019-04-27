@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
-import { FileStorage } from './storage';
+import { DataStorage } from './storage';
 import { Stylesheet, StylesheetScope, CssProperties } from './stylesheet';
 import { FigmaFile } from './figmafile';
-import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './figmalayer';
+import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './sidebar';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 const supportedLanguages = ['less']; // List of supported file types
@@ -19,9 +19,9 @@ enum Status {
 }
 
 /**
- * Represents and manipulates everything related to the state of the currently open file
+ * Represents and manipulates everything related to the state of the currently open workspace
  */
-export class FileState {
+export class WorkspaceState {
     static statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
     // VSCode properties
@@ -32,11 +32,11 @@ export class FileState {
     private diagnostics: vscode.DiagnosticCollection;
     
     // Persisted properties API
-    private storage!: FileStorage; // for persisting and retrieving data
+    private storage!: DataStorage; // for persisting and retrieving data
     
     // View managers
 	private stylesheet!: Stylesheet; // Represents the style scopes in the current file
-    private _figmaLayerProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
+    private sidebarProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
     private treeView!: vscode.TreeView<FigmaLayer>;
 
 	/**
@@ -60,21 +60,21 @@ export class FileState {
      */
     load() {
         // Load persisted data
-		this.storage = new FileStorage(this.uri.path, this.context);
-        this.figmaFile = this.storage.components;
+		this.storage = new DataStorage(this.uri.path, this.context);
         
         // Set initial view states
         this.status = this.getDefaultStatus();
-        this.createCssPropertiesProvider();
-        this.createLinksManagerProvider();
+        this.loadSidebar();
+        // this.createCssPropertiesProvider();
+        // this.createLinksManagerProvider();
 		
-		// Instantiate view the stylesheet view manager
-        this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
-        // Wait for the file parsing to end before continuing with loading
-        this.stylesheet.addParsedFileCallback(()=>{
-            // Load links
-            this.updateViewsWithLinks();
-        });
+		// // Instantiate view the stylesheet view manager
+        // this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
+        // // Wait for the file parsing to end before continuing with loading
+        // this.stylesheet.addParsedFileCallback(()=>{
+        //     // Load links
+        //     this.updateViewsWithLinks();
+        // });
     }
 
     /**
@@ -196,12 +196,13 @@ export class FileState {
      * Updates the views with the current links
      */
     updateViewsWithLinks(){
+        // TODO
         // Update links manager view
-        this.createLinksManagerProvider(this.links);
+        // this.createLinksManagerProvider(this.links);
         
-        // Update links in views
-        this.figmaLayerProvider.updateLinks(this.linksByLayer);
-        this.stylesheet.updateLinks(this.linksBySelector);
+        // // Update links in views
+        // this.figmaLayerProvider.updateLinks(this.linksByLayer);
+        // this.stylesheet.updateLinks(this.linksBySelector);
     }
 
     /**
@@ -254,31 +255,37 @@ export class FileState {
     =======================================*/
 
     /**
-     * Fetches the figma file
+     * Fetches all currently connected figma files from the server
      */
-    public fetchAPIData(): boolean{
+    public fetchAllFigmaFiles(): boolean {
+        let keys = this.fileKeys;
+        let ok = true;
+        keys.forEach(key => {
+            ok = ok && this.fetchFigmaFile(key);
+        });
+        return ok;
+    }
+
+    /**
+     * Fetches a figma file and builds its FigmaFile cache
+     */
+    public fetchFigmaFile(fileKey: string): boolean{
         if(this.documentIsSetup){
             // Set status
             this.status = Status.SYNCING;
             const client = Figma.Client({ personalAccessToken: this.APIKey });
-            client.file(this.fileKey!).then(({ data }) => {
+            client.file(fileKey).then(({ data }) => {
                 // Retrieve cache if any
-                let figmaFile = this.figmaFile;
-                
-                // Check if it's still the same file. User may have switched it in the meantime.
-                // If no file is available, this is a first time sync.
-                if(!figmaFile || figmaFile.key === data.document.id){
+                let figmaFile = this.getFigmaFile(fileKey);
 
-                    // Check if the there is data and if it's is up to date. If not, parse received data.
-                    if(!figmaFile || data.lastModified !== figmaFile.lastModified){
-                        // Parse document
-                        figmaFile = new FigmaFile(data);
-                        // Store components
-                        this.figmaFile = figmaFile;
-                    }
-                    // Change status
-                    this.status = Status.SYNCED;
+                // Check if the there is data and if it's is up to date. If not, parse received data.
+                if(!figmaFile || data.lastModified !== figmaFile.lastModified){
+                    // Store components
+                    this.addFigmaFile(new FigmaFile(data, fileKey));
                 }
+                // Change status
+                this.status = Status.SYNCED;
+
             }).catch(reason => {
                 this.status = Status.ERROR;
                 console.warn(reason);
@@ -293,42 +300,58 @@ export class FileState {
         return false;
     }
 
+    // /**
+    //  * Updates the figma file
+    //  * @param figmaFile 
+    //  */
+    // set figmaFile(figmaFile: FigmaFile){
+    //     // Update internal representation of the figma file
+    //     this.storage.figmaFile = figmaFile;
+    //     
+    // }
+
+    // /**
+    //  * Returns the figma file
+    //  */
+    // get figmaFile(): FigmaFile {
+    //     return this.storage.figmaFile;
+    // }
+
+    get figmaFiles(): FigmaFile[] {
+        return this.storage.figmaFiles;
+    }
+
     /**
-     * Updates the figma file
+     * Adds a FigmaFile instance to the workspace state
      * @param figmaFile 
      */
-    set figmaFile(figmaFile: FigmaFile){
-        // Update internal representation of the figma file
-        this.storage.components = figmaFile;
+    addFigmaFile(figmaFile: FigmaFile){
+        this.storage.addFigmaFile(figmaFile);
+
         // Update treeview provider
-        this.figmaLayerProvider = new FigmaLayerProvider(figmaFile, this.ignoreInternalLayers);
+        this.loadSidebar();
     }
 
     /**
-     * Returns the figma file
+     * Returns the file FigmaFile instance for the fileKey
+     * @param fileKey 
      */
-    get figmaFile(): FigmaFile {
-        return this.storage.components;
+    getFigmaFile(fileKey: string): FigmaFile {
+        return this.storage.getFigmaFile(fileKey);
     }
 
     /**
-     * Updates the treeview with the new data
+     * Updates the treeview with the current figma components
      */
-    set figmaLayerProvider(provider: FigmaLayerProvider){
+    loadSidebar(){
+        let provider = new FigmaLayerProvider(this.figmaFiles, this.ignoreInternalLayers);
         // Update internal representation
-        this._figmaLayerProvider = provider;
+        this.sidebarProvider = provider;
         // Register the provider
         this.treeView = vscode.window.createTreeView('figmaComponents', {
-            treeDataProvider: this._figmaLayerProvider,
+            treeDataProvider: this.sidebarProvider,
             showCollapseAll: true
         });
-    }
-
-    /**
-     * Returns the current layer provider
-     */
-    get figmaLayerProvider(): FigmaLayerProvider {
-        return this._figmaLayerProvider;
     }
 
     /**
@@ -336,7 +359,7 @@ export class FileState {
      * @param layerId 
      */
     revealLayerById(layerId: string){
-        let figmaLayer = this.figmaLayerProvider.treeItems[layerId];
+        let figmaLayer = this.sidebarProvider.treeItems[layerId];
         if(figmaLayer){
             this.treeView.reveal(figmaLayer, {
                 select: true,
@@ -352,7 +375,7 @@ export class FileState {
      * @param layerId 
      */
     getLayerById(layerId: string): FigmaLayer | undefined{
-        let items = this.figmaLayerProvider.treeItems;
+        let items = this.sidebarProvider.treeItems;
         if(layerId in items){
             return items[layerId];
         }
@@ -389,19 +412,12 @@ export class FileState {
     /*====================================
         FILE & EXTENSION SETUP, CONFIGs
     ======================================*/
-    
-    get fileName(): string | undefined {
-        if(!this.figmaFile){
-            return undefined;
-        }
-        return this.figmaFile.name;
-    }
 
     /**
      * Returns the filekey associated with this document
      */
-    get fileKey(): string | undefined {
-        return this.storage.fileKey;
+    get fileKeys(): string[] {
+        return this.storage.fileKeys;
     }
 
     /**
@@ -415,7 +431,7 @@ export class FileState {
      * Checks whether the document is setup to sync with a figma document
      */
     get documentIsSetup(): boolean {
-        return this.fileKey !== undefined && this.APIKey !== undefined;
+        return this.fileKeys.length > 0 && this.APIKey !== undefined;
     }
 
     /**
@@ -427,13 +443,13 @@ export class FileState {
     }
 
     /**
-     * Attaches a file to this document
+     * Connects this workspace with a figma file
      */
-    public attachFile(fileKey:string){
+    public connectFigmaFileKey(fileKey:string){
         // Persist this connection
-        this.storage.fileKey = fileKey;
+        this.storage.addFileKey(fileKey);
         // Retrieve components
-        this.fetchAPIData();
+        this.fetchFigmaFile(fileKey);
     }
 
     /**
@@ -456,10 +472,10 @@ export class FileState {
         // Create boilerplate function for showing the status bar with a message and command
         let showStatusBar = (text:string, command?:string) => {
             if(command){
-                FileState.statusBar.command = command;
+                WorkspaceState.statusBar.command = command;
             }
-            FileState.statusBar.text = text;
-            FileState.statusBar.show();
+            WorkspaceState.statusBar.text = text;
+            WorkspaceState.statusBar.show();
         };
 
         switch(status){
@@ -470,12 +486,12 @@ export class FileState {
                 showStatusBar('$(repo-sync) Syncing with api.figma.com');
                 break;
                 case Status.SYNCED:
-                showStatusBar(`$(check) Figma: ${this.fileName}`, 'figmasync.removeFigmaSync');
+                showStatusBar(`$(check) Connected with Figma`, 'figmasync.removeFigmaSync');
                 break;
             case Status.ERROR:
                 showStatusBar(`$(alert) Something went wrong...`, 'figmasync.syncLessFile');
             default:
-                FileState.statusBar.hide();
+                WorkspaceState.statusBar.hide();
         }
     }
     
@@ -486,7 +502,7 @@ export class FileState {
         if(!supportedLanguages.includes(this.editor.document.languageId)){
             return Status.UNSUPPORTED;
         }
-        if(this.fileName) {
+        if(this.documentIsSetup) {
             return Status.SYNCED;
         }
         return Status.NOT_ATTACHED;

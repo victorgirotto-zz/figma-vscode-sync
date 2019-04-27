@@ -1,31 +1,74 @@
 import * as vscode from 'vscode';
 import { FigmaFile } from './figmafile';
 import { IdOrder } from './link';
-import { FigmaLayer } from './figmalayer';
+import { FigmaLayer } from './sidebar';
+import * as fs from 'fs';
+import * as path from 'path';
 
-export class FileStorage {
+const fileName = '.figmasync';
+
+/**
+ * API for persisting information related to Figma Sync
+ * This class decides what is stored in the local file vs. workspace storage.
+ */
+export class DataStorage {
     uri: string;
     context: vscode.ExtensionContext;
+    filePath: string = '';
+    fileStorage: FileStorage;
 
     constructor(uri: string, context: vscode.ExtensionContext){
         this.uri = uri;
         this.context = context;
+        
+        // Create file storage
+        let wsFolders = vscode.workspace.workspaceFolders;
+        if(wsFolders){
+            this.filePath = wsFolders[0].uri.fsPath;
+        }
+        this.fileStorage = new FileStorage(this.filePath);
     }
 
-    set fileKey(key: string | undefined){
-        this.context.workspaceState.update(`filekey-${this.uri}`, key);
+    /**
+     * Persists a file key
+     * @param key 
+     */
+    addFileKey(key: string){
+        this.fileStorage.addFigmaFile(key);
     }
 
-    get fileKey(): string | undefined{
-        return this.context.workspaceState.get(`filekey-${this.uri}`);
+    /**
+     * Retrieves the persisted file keys
+     */
+    get fileKeys(): string[]{
+        return this.fileStorage.figmaFiles;
     }
 
-    set components(components: FigmaFile){
-        this.context.workspaceState.update(`figmaFile-${this.uri}`, components);
+    /**
+     * Retrieves all persisted figma files
+     */
+    get figmaFiles(): FigmaFile[] {
+        let keys = this.fileKeys;
+        let figmaFiles: FigmaFile[] = [];
+        keys.forEach(key => {
+            figmaFiles.push(this.getFigmaFile(key));
+        });
+        return figmaFiles;
     }
 
-    get components(): FigmaFile {
-        return this.context.workspaceState.get(`figmaFile-${this.uri}`) as FigmaFile;
+    /**
+     * Persists a figma file instance under its filekey
+     */
+    addFigmaFile(figmaFile: FigmaFile){
+        this.context.workspaceState.update(`figmaFile-${figmaFile.key}`, figmaFile);
+    }
+
+
+    /**
+     * Retrieves a figmaFile instance under a fileKey
+     */
+    getFigmaFile(fileKey: string): FigmaFile {
+        return this.context.workspaceState.get(`figmaFile-${fileKey}`) as FigmaFile;
     }
 
     /**
@@ -86,5 +129,108 @@ export class FileStorage {
         this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
         this.context.workspaceState.update(`links-${this.uri}`, undefined);
     }
+
+}
+
+/**
+ * Stores human-readable data for Figma Sync in JSON format.
+ * 
+ * Sample structure:
+ * 
+        {
+            links: {
+                'c:/system/styles/style.less': [
+                        ['12:89', 'body .button'],
+                        ...
+                ], 
+                'c:/system/styles/anotehrStyle.less': [
+                        ['71:24', 'body .button.primary'],
+                        ...
+                ],
+            },
+            figmaFiles: [
+                'fecZ7gbRIgcUr2B1aZEcWaYV',
+                '1aZbRIgcUr2BEcWaYVdhcM7g',
+                'cM7gbRW1aZdhaYVIgcUr2BEc',
+                ...
+            ]
+        }
+ */
+class FileStorage {
+    /**
+     * Path of the file meant to store this data
+     */
+    filePath: string;
+    /**
+     * Dictionary of files and links between figma layers and scopes witin those files
+     */
+    links: {[filePath: string]: string[][]} = {};
+    /**
+     * Array of figma file keys that are connected to this workspace
+     */
+    figmaFiles: string[] = [];
+
+    constructor(filePath: string){
+        this.filePath = filePath;
+        this.readFile();
+    }
+
+    /**
+     * Returns the full file path + file name of the storage file
+     */
+    getFilePath(): string{
+        return path.join(this.filePath, fileName);
+    }
+
+    /**
+     * Reads the file and populates the class properties
+     */
+    readFile(){
+        try {
+            // Read file
+            let contents = fs.readFileSync(this.getFilePath(), {
+                encoding: 'utf8'
+            });
+            if(contents){
+                // Update the instance with the file values
+                let contentsJSON = JSON.parse(contents);
+                this.figmaFiles = contentsJSON.figmaFiles;
+                this.links = contentsJSON.links;
+            }
+
+        } catch (error) {
+            // File doesn't exist
+            console.warn('File does not exist');
+        }
+    }
+
+    /**
+     * Adds a figma file to storage
+     * @param fileKey 
+     */
+    addFigmaFile(fileKey: string){
+        if(!this.figmaFiles.includes(fileKey)){
+            this.figmaFiles.push(fileKey);
+
+            // Save
+            this.save();
+        }
+    }
+    
+    /**
+     * 
+     */
+    save(){
+        let JSONString = JSON.stringify({
+                links: this.links,
+                figmaFiles: this.figmaFiles
+            }, null, 4);
+
+        // Write the file
+        fs.writeFileSync(this.getFilePath(), JSONString, {
+            encoding: 'utf8'
+        });
+    }
+    
 
 }

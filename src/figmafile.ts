@@ -15,12 +15,12 @@ export class FigmaFile {
      * 
      * @param data 
      */
-    constructor(data: Figma.FileResponse){
+    constructor(data: Figma.FileResponse, key: string){
         // First, go through all components and parse their meta
         this.meta = data.components;
         this.lastModified = data.lastModified;
         this.name = data.name;
-        this.key = data.document.id;
+        this.key = key;
 
         // Add children from all pages
         data.document.children.forEach((p: any) => {

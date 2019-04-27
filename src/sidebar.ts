@@ -211,18 +211,21 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 
     /**
      * Builds the treeview provider from a list of figma components and links
-     * @param components 
+     * @param figmaFiles
+     * @param ignoreInternalLayers boolean indicating whether internal (unecessary) layers should be ignored or not
      */
-    constructor(components: FigmaFile | undefined, ignoreInternalLayers: boolean){
+    constructor(figmaFiles: FigmaFile[], ignoreInternalLayers: boolean){
         this.treeItems = {};
         this.rootItems = [];
         this.links = {};
         this.ignoreInternalLayers = ignoreInternalLayers;
     
         // Create map
-        if(components){
-            components.components.forEach(node => {
-                this.rootItems.push(this.createTreeItemMap(node, components.meta));
+        if(figmaFiles){
+            figmaFiles.forEach(file => {
+                file.components.forEach(component => {
+                    this.rootItems.push(this.createTreeItemMap(component, file.meta));
+                });
             });
         }
     }
