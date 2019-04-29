@@ -75,6 +75,14 @@ export class DataStorage {
     }
 
     /**
+     * Deletes the figmaFile cache for fileKey
+     * @param fileKey 
+     */
+    deleteFigmaFileCache(fileKey: string) {
+        this.context.workspaceState.update(`figmaFile-${fileKey}`, undefined);
+    }
+
+    /**
      * Adds a link between a layer and a css scope
      * @param layer 
      */
@@ -127,8 +135,14 @@ export class DataStorage {
     /**
      * Erases all figma sync cache data
      */
-    clearCache(){
-        // this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
+    removeFile(fileKey: string){
+        // Remove cache
+        this.context.workspaceState.update(`figmaFile-${fileKey}`, undefined);
+
+        // Remove from file storate
+        this.fileStorage.removeFigmaFile(fileKey);
+
+        // TODO remove links
         // this.context.workspaceState.update(`links-${this.uri}`, undefined);
 
     }
@@ -216,6 +230,20 @@ class FileStorage {
             this.figmaFiles.push(fileKey);
 
             // Save
+            this.save();
+        }
+    }
+
+    /**
+     * 
+     * @param fileKey 
+     */
+    removeFigmaFile(fileKey: string){
+        let index = this.figmaFiles.indexOf(fileKey)
+        if(index >= 0){
+            this.figmaFiles.splice(index, 1);
+
+            // Save changes
             this.save();
         }
     }

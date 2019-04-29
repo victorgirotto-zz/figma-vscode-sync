@@ -17,15 +17,23 @@
 		"commands": [
 			{
 				"command": "figmasync.syncLessFile",
-				"title": "Sync a LESS file to a Figma file"
+				"title": "Add a Figma file",
+				"icon": {
+					"dark": "media/add.svg",
+					"light": "media/add-light.svg"
+				}
 			},
 			{
-				"command": "figmasync.removeFigmaSync",
-				"title": "Stop syncing this file with Figma"
+				"command": "figmasync.unlinkFile",
+				"title": "Stop syncing this file with Figma",
+				"icon": {
+					"dark": "media/delete.svg",
+					"light": "media/delete-light.svg"
+				}
 			},
 			{
 				"command": "figmasync.refreshComponents",
-				"title": "Refresh components",
+				"title": "Refresh files",
 				"icon": {
 					"dark": "media/refresh.svg",
 					"light": "media/refresh-light.svg"
@@ -68,6 +76,11 @@
 			
 			"view/title": [
 				{
+					"command": "figmasync.syncLessFile",
+					"when": "view == figmaComponents",
+					"group": "navigation"
+				},
+				{
 					"command": "figmasync.refreshComponents",
 					"when": "view == figmaComponents",
 					"group": "navigation"
@@ -87,6 +100,11 @@
 				{
 					"command": "figmasync.openInFigma",
 					"when": "view == figmaComponents"
+				},
+				{
+					"command": "figmasync.unlinkFile",
+					"when": "view == figmaComponents && viewItem == document",
+					"group": "inline"
 				}
 			]
 		},

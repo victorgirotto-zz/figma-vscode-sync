@@ -52,16 +52,16 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * 
+	 * Stops syncing with this file
 	 */
-	let removeFigmaSync = function(){
-		// Removes figma sync
-		// promptYesOrNo("Remove the connection between this file and Figma?", (result: string | undefined) => {
-		// 	if(result && result.toLowerCase() === 'yes'){
-		// 		// Remove files
-		// 		state.detachFile();
-		// 	}	
-		// });
+	let unlinkFile = function(layer: FigmaLayer){
+		// Removes figma sync for this file
+		promptYesOrNo(`Unlink the Figma file "${layer.name}"?`, (result: string | undefined) => {
+			if(result && result.toLowerCase() === 'yes'){
+				// Remove files
+				state.unlinkFigmaFile(layer.fileId);
+			}	
+		});
 	};
 
 	/**
@@ -213,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', refreshComponents));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.removeFigmaSync', removeFigmaSync));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.unlinkFile', unlinkFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));

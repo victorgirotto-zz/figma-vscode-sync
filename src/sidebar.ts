@@ -358,7 +358,13 @@ export class LayerTreeItem extends vscode.TreeItem {
             title: 'Show CSS Properties for this layer',
             arguments: [layer]
         };
-        this.contextValue = layer.hasStyles ? 'styled' : 'unstyled';
+
+        // Set context value depending on the layer type and styles
+        if(layer.type === 'DOCUMENT'){
+            this.contextValue = layer.type.toLowerCase();
+        } else {
+            this.contextValue = layer.hasStyles ? 'styled' : 'unstyled';
+        }
     }
 
     get id(): string {

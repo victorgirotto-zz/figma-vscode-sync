@@ -65,7 +65,7 @@ export class WorkspaceState {
         // Set initial view states
         this.status = this.getDefaultStatus();
         this.loadSidebar();
-        // this.createCssPropertiesProvider();
+        this.createCssPropertiesProvider();
         // this.createLinksManagerProvider();
 		
 		// // Instantiate view the stylesheet view manager
@@ -453,17 +453,15 @@ export class WorkspaceState {
     }
 
     /**
-     * Deletes all local data for this file, thus disconnecting this file from a Figma file.
+     * Deletes the data related to the figma file identified by fileKey
+     * @param fileKey key of the Figma file
      */
-    public detachFile(){
+    public unlinkFigmaFile(fileKey: string){
         // Delete data
-        this.storage.clearCache();
-        // Dispose of view items
-        this.dispose();
+        this.storage.removeFile(fileKey);
         // Reload the views
         this.load();
     }
-
 
     /**
      * Sets the status of the extension. This will be reflected in the status bar
@@ -486,7 +484,7 @@ export class WorkspaceState {
                 showStatusBar('$(repo-sync) Syncing with api.figma.com');
                 break;
                 case Status.SYNCED:
-                showStatusBar(`$(check) Connected with Figma`, 'figmasync.removeFigmaSync');
+                showStatusBar(`$(check) Synced with Figma`, 'figmasync.refreshComponents');
                 break;
             case Status.ERROR:
                 showStatusBar(`$(alert) Something went wrong...`, 'figmasync.syncLessFile');
