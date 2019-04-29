@@ -59,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 		promptYesOrNo(`Unlink the Figma file "${layer.name}"?`, (result: string | undefined) => {
 			if(result && result.toLowerCase() === 'yes'){
 				// Remove files
-				state.unlinkFigmaFile(layer.fileId);
+				state.unlinkFigmaFile(layer.fileKey);
 			}	
 		});
 	};
@@ -161,8 +161,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Opens a layer in figma
 	 */
 	let openInFigma = function(layer: FigmaLayer){
-		
-		// vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${state.fileKey}/?node-id=${layer.id}`));
+		vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${layer.fileKey}/?node-id=${layer.layerId}`));
 	};
 
 	/**

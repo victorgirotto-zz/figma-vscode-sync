@@ -12,27 +12,37 @@ const internalLayerPrefix = '_';
  */
 export class FigmaLayer {
 
-    fileId: string;
+    fileKey: string;
     node: any;
     parent: FigmaLayer | undefined;
     _styles: CssProperties = {};
 
     constructor(fileId:string, node: any, parent?: FigmaLayer) {
-        this.fileId = fileId;
+        this.fileKey = fileId;
         this.node = node;
         this.parent = parent;
         this._styles = FigmaUtil.GetCssProperties(node);
     }
 
+    /**
+     * Returns the id for the layer, comprised of fileKey:layerId
+     */
     get id(): string {
-        return `${this.fileId}:${this.node.id}`;
+        return `${this.fileKey}:${this.node.id}`;
+    }
+
+    /**
+     * Returns the id for the layer
+     */
+    get layerId(): string {
+        return this.node.id;
     }
 
     get children(): FigmaLayer[] {
         if(!this.node.children){
             return [];
         }
-        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(this.fileId, c, this));
+        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(this.fileKey, c, this));
     }
     
     get name(): string {
