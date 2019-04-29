@@ -12,25 +12,27 @@ const internalLayerPrefix = '_';
  */
 export class FigmaLayer {
 
+    fileId: string;
     node: any;
     parent: FigmaLayer | undefined;
     _styles: CssProperties = {};
 
-    constructor(node: any, parent?: FigmaLayer) {
+    constructor(fileId:string, node: any, parent?: FigmaLayer) {
+        this.fileId = fileId;
         this.node = node;
         this.parent = parent;
         this._styles = FigmaUtil.GetCssProperties(node);
     }
 
     get id(): string {
-        return this.node.id;
+        return `${this.fileId}:${this.node.id}`;
     }
 
     get children(): FigmaLayer[] {
         if(!this.node.children){
             return [];
         }
-        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(c, this));
+        return this.node.children.map((c: FigmaLayer) => new FigmaLayer(this.fileId, c, this));
     }
     
     get name(): string {
@@ -42,6 +44,12 @@ export class FigmaLayer {
     }
 
     get styles(): CssProperties {
+
+        // A document should not be linkable
+        if(this.type === 'DOCUMENT'){
+            return {};
+        }
+
         if(Object.entries(this._styles).length !== 0){
             // Object has its own styles. Return them.
             return this._styles;
@@ -223,8 +231,8 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
         // Create map
         if(figmaFiles){
             figmaFiles.forEach(file => {
-                file.components.forEach(component => {
-                    this.rootItems.push(this.createTreeItemMap(component, file.meta));
+                file.nodes.forEach(component => {
+                    this.rootItems.push(this.createTreeItemMap(file.key, component, file.meta));
                 });
             });
         }
@@ -249,15 +257,15 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param meta Meta information about components (e.g. description)
      * @param parent Parent layer. If layer is a root layer, it will be undefined.
      */
-    private createTreeItemMap(node: any, meta: ComponentsMeta, parent?: FigmaLayer): FigmaLayer{
+    private createTreeItemMap(fileId: string, node: any, meta: ComponentsMeta, parent?: FigmaLayer): FigmaLayer{
         // Create layer item
-        let layer = new FigmaLayer(node, parent);
+        let layer = new FigmaLayer(fileId, node, parent);
         // Add to map
         this.treeItems[node.id] = layer;
         // Build the children
         if(node.children){
             node.children.forEach((child:any) => {
-                layer.children.push(this.createTreeItemMap(child, meta, layer));
+                layer.children.push(this.createTreeItemMap(fileId, child, meta, layer));
             });
         }
         return layer;
@@ -337,7 +345,7 @@ export class LayerTreeItem extends vscode.TreeItem {
     constructor(layer: FigmaLayer){
         // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
         let collapsibleState;
-        if(['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(layer.type)){
+        if(['DOCUMENT', 'FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(layer.type)){
             collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
         } else {
             collapsibleState = vscode.TreeItemCollapsibleState.None;
@@ -389,8 +397,11 @@ export class LayerTreeItem extends vscode.TreeItem {
         return this.links.length > 0;
     }
 
+    /**
+     * 
+     */
     get hasStyles(): boolean {
-        return this.layer.hasStyles;
+        return this.layer.hasStyles && this.layer.type !== 'DOCUMENT';
     }
 
     get iconPath() {

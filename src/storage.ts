@@ -47,11 +47,14 @@ export class DataStorage {
     /**
      * Retrieves all persisted figma files
      */
-    get figmaFiles(): FigmaFile[] {
+    retrieveAllFigmaFiles(): FigmaFile[] {
         let keys = this.fileKeys;
         let figmaFiles: FigmaFile[] = [];
         keys.forEach(key => {
-            figmaFiles.push(this.getFigmaFile(key));
+            let file = this.retrieveFigmaFile(key);
+            if(file){
+                figmaFiles.push(file);
+            }
         });
         return figmaFiles;
     }
@@ -59,7 +62,7 @@ export class DataStorage {
     /**
      * Persists a figma file instance under its filekey
      */
-    addFigmaFile(figmaFile: FigmaFile){
+    cacheFigmaFile(figmaFile: FigmaFile){
         this.context.workspaceState.update(`figmaFile-${figmaFile.key}`, figmaFile);
     }
 
@@ -67,7 +70,7 @@ export class DataStorage {
     /**
      * Retrieves a figmaFile instance under a fileKey
      */
-    getFigmaFile(fileKey: string): FigmaFile {
+    retrieveFigmaFile(fileKey: string): FigmaFile {
         return this.context.workspaceState.get(`figmaFile-${fileKey}`) as FigmaFile;
     }
 
@@ -122,12 +125,12 @@ export class DataStorage {
     }
 
     /**
-     * Erases all figma sync data related to a file
+     * Erases all figma sync cache data
      */
-    clearData(){
-        this.context.workspaceState.update(`filekey-${this.uri}`, undefined);
-        this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
-        this.context.workspaceState.update(`links-${this.uri}`, undefined);
+    clearCache(){
+        // this.context.workspaceState.update(`figmaFile-${this.uri}`, undefined);
+        // this.context.workspaceState.update(`links-${this.uri}`, undefined);
+
     }
 
 }

@@ -318,7 +318,7 @@ export class WorkspaceState {
     // }
 
     get figmaFiles(): FigmaFile[] {
-        return this.storage.figmaFiles;
+        return this.storage.retrieveAllFigmaFiles();
     }
 
     /**
@@ -326,7 +326,7 @@ export class WorkspaceState {
      * @param figmaFile 
      */
     addFigmaFile(figmaFile: FigmaFile){
-        this.storage.addFigmaFile(figmaFile);
+        this.storage.cacheFigmaFile(figmaFile);
 
         // Update treeview provider
         this.loadSidebar();
@@ -337,7 +337,7 @@ export class WorkspaceState {
      * @param fileKey 
      */
     getFigmaFile(fileKey: string): FigmaFile {
-        return this.storage.getFigmaFile(fileKey);
+        return this.storage.retrieveFigmaFile(fileKey);
     }
 
     /**
@@ -457,7 +457,7 @@ export class WorkspaceState {
      */
     public detachFile(){
         // Delete data
-        this.storage.clearData();
+        this.storage.clearCache();
         // Dispose of view items
         this.dispose();
         // Reload the views

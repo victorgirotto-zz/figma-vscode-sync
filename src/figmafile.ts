@@ -8,7 +8,7 @@ export class FigmaFile {
     name: string;
     lastModified: string;
     meta: ComponentsMeta;
-    components: any[] = [];
+    nodes: any[] = [];
 
     /**
      * Build a FigmaDocument instance based on a Figma.FileResponse. This instance allows searching of property values within figma nodes.
@@ -16,18 +16,28 @@ export class FigmaFile {
      * @param data 
      */
     constructor(data: Figma.FileResponse, key: string){
-        // First, go through all components and parse their meta
         this.meta = data.components;
         this.lastModified = data.lastModified;
         this.name = data.name;
         this.key = key;
 
+        // Create document node
+        let documentNode = {
+            id: key,
+            name: data.name,
+            children: [] as any[],
+            type: 'DOCUMENT'
+        };
+
         // Add children from all pages
-        data.document.children.forEach((p: any) => {
-            this.components.push(...p.children);
+        data.document.children.forEach((page: any) => {
+            documentNode.children.push(...page.children);
         });
         
-        // Sort alphabetically
-        this.components.sort((a,b) => a.name.localeCompare(b.name));
+        // Sort children alphabetically
+        documentNode.children.sort((a,b) => a.name.localeCompare(b.name));
+
+        // Add node to file
+        this.nodes.push(documentNode);
     }
 }

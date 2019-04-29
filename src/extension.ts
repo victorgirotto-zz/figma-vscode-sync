@@ -189,7 +189,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Handles the event of a user switching to another editor
 	 */
 	let handleChangeEditor = function(){
-		loadWorkspaceState(true);
+		// loadWorkspaceState(true);
 	};
 
 	/**
