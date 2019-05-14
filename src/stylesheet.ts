@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as postcss from 'postcss';
 import * as path from 'path';
 import { LinksMap, LayerSelectorLink } from './link';
-import { start } from 'repl';
 import { CssUtil } from './util/css-util';
 
 // Type of css properties
@@ -15,7 +14,12 @@ const noopPlugin = postcss.plugin('postcss-noop', () => {
     return async () => {}; 
 });
 
+
+/**
+ * Represents a stylesheet document, including its scopes, warning, and decorations.
+ */
 export class Stylesheet {
+
     // Properties
     text: string;
     baseScope: StylesheetScope;
@@ -34,7 +38,7 @@ export class Stylesheet {
         private diagnostics: vscode.DiagnosticCollection
     ){
         this.text = this.editor.document.getText();
-        this.baseScope = new StylesheetScope('body');
+        this.baseScope = new StylesheetScope('body'); // TODO This should be made more flexible to accomodate other root selectors
         this.version = this.editor.document.version;
         this.decorations = [];
         this.links = {};
@@ -147,28 +151,28 @@ export class Stylesheet {
      * @param links 
      */
     updateLinks(links: LinksMap){
-        // First, dispose of the current decorations and diagnostic messages
-        this.clear();        
-        this.diagnostics.delete(this.editor.document.uri);
+        // // First, dispose of the current decorations and diagnostic messages
+        // this.clear();        
+        // this.diagnostics.delete(this.editor.document.uri);
         
-        // Then, add the links and generate diagnostic messages
-        let warnings: vscode.Diagnostic[] = [];
-        this.links = links;
-        for(let scopeId in this.links){
-            let links = this.links[scopeId];
-            links.forEach(link => {
-                let scope = this.getScope(link.scopeId);
-                if(scope){
-                    // Add decoration to selector
-                    this.addCodeDecoration(link, scope);
-                    // Add scope warnings
-                    warnings.push(...this.getScopeWarnings(scope, link.layer.styles));
-                }
-            });
-        }
+        // // Then, add the links and generate diagnostic messages
+        // let warnings: vscode.Diagnostic[] = [];
+        // this.links = links;
+        // for(let scopeId in this.links){
+        //     let links = this.links[scopeId];
+        //     links.forEach(link => {
+        //         let scope = this.getScope(link.scopeId);
+        //         if(scope){
+        //             // Add decoration to selector
+        //             this.addCodeDecoration(link, scope);
+        //             // Add scope warnings
+        //             warnings.push(...this.getScopeWarnings(scope, link.layer.styles));
+        //         }
+        //     });
+        // }
 
-        // Add the warning messages
-        this.diagnostics.set(this.editor.document.uri, warnings);
+        // // Add the warning messages
+        // this.diagnostics.set(this.editor.document.uri, warnings);
     }
 
     /**
@@ -179,20 +183,20 @@ export class Stylesheet {
     getScopeWarnings(scope: StylesheetScope, layerStyles: CssProperties): vscode.Diagnostic[] {
         let warnings: vscode.Diagnostic[] = [];
         // Find different and missing properties
-        let missing = scope.findMissingProperties(layerStyles);
-        let different = scope.diffIntersectingCssProperties(layerStyles);
-        // Create warnings for missing properties
-        for(let missingProp in missing){
-            let missingValue = layerStyles[missingProp];
-            let message = `Figma: missing ${missingProp}: ${missingValue};`;
-            warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
-        }
-        // Create warnings for differences
-        for(let diffProp in different){
-            let diffValue = different[diffProp];
-            let message = `Figma: expected ${diffProp}: ${diffValue};`;
-            warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
-        }
+        // let missing = scope.findMissingProperties(layerStyles);
+        // let different = scope.diffIntersectingCssProperties(layerStyles);
+        // // Create warnings for missing properties
+        // for(let missingProp in missing){
+        //     let missingValue = layerStyles[missingProp];
+        //     let message = `Figma: missing ${missingProp}: ${missingValue};`;
+        //     warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
+        // }
+        // // Create warnings for differences
+        // for(let diffProp in different){
+        //     let diffValue = different[diffProp];
+        //     let message = `Figma: expected ${diffProp}: ${diffValue};`;
+        //     warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
+        // }
         return warnings;        
     }
 
@@ -201,30 +205,30 @@ export class Stylesheet {
 	 * @param layer 
 	 */
 	private addCodeDecoration(link: LayerSelectorLink, scope: StylesheetScope){
-		let editor = this.editor;
-		if(editor){
-			// Create range object
-            let range = scope.getRange(scope.selector);
+		// let editor = this.editor;
+		// if(editor){
+		// 	// Create range object
+        //     let range = scope.getRange(scope.selector);
 
-			// Create layer path for hover information
-            let args = JSON.stringify([{layerId: link.layerId}]);
-			let hoverMessageMarkdown = new vscode.MarkdownString(
-                `Linked with [${link.layerName}](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")`
-                // link.layer.getFormattedStyles(1)
-            );
-            // Enable links in the markdown string
-            hoverMessageMarkdown.isTrusted = true;
+		// 	// Create layer path for hover information
+        //     let args = JSON.stringify([{layerId: link.layerId}]);
+		// 	let hoverMessageMarkdown = new vscode.MarkdownString(
+        //         `Linked with [${link.layerName}](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")`
+        //         // link.layer.getFormattedStyles(1)
+        //     );
+        //     // Enable links in the markdown string
+        //     hoverMessageMarkdown.isTrusted = true;
 
-			// Create decoration
-			const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
-            const decorationType = this.getLinkedSelectorDecoration();
+		// 	// Create decoration
+		// 	const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
+        //     const decorationType = this.getLinkedSelectorDecoration();
             
-            // Store decoration
-            this.decorations.push(decorationType);
+        //     // Store decoration
+        //     this.decorations.push(decorationType);
             
-            // Add them to the editor
-			editor.setDecorations(decorationType, options);
-		}
+        //     // Add them to the editor
+		// 	editor.setDecorations(decorationType, options);
+		// }
     }
 
     /**
@@ -246,10 +250,10 @@ export class Stylesheet {
      * Removes all decorations currently in place
      */
     clear() {
-        // Remove decorations
-        this.decorations.forEach(d => {
-            d.dispose();
-        });
+        // // Remove decorations
+        // this.decorations.forEach(d => {
+        //     d.dispose();
+        // });
     }
 
     /**

@@ -10,10 +10,12 @@ export enum IdOrder {
 
 export class LayerSelectorLink {  
 
+    localFile: string;
     layer: FigmaLayer;
     scope: StylesheetScope;
 
-    constructor(layer: FigmaLayer, scope: StylesheetScope){
+    constructor(localFile: string, layer: FigmaLayer, scope: StylesheetScope){
+        this.localFile = localFile;
         this.layer = layer;
         this.scope = scope;
     }

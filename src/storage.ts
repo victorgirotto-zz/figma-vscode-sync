@@ -12,13 +12,11 @@ const fileName = '.figmasync';
  * This class decides what is stored in the local file vs. workspace storage.
  */
 export class DataStorage {
-    uri: string;
     context: vscode.ExtensionContext;
     filePath: string = '';
     fileStorage: FileStorage;
 
-    constructor(uri: string, context: vscode.ExtensionContext){
-        this.uri = uri;
+    constructor(context: vscode.ExtensionContext){
         this.context = context;
         
         // Create file storage
@@ -101,7 +99,7 @@ export class DataStorage {
             // Add the new link
             links.push(linkIds);
             // Update storage value
-            this.context.workspaceState.update(`links-${this.uri}`, links);
+            // TODO
         }
     }
 
@@ -116,20 +114,21 @@ export class DataStorage {
             return link[IdOrder.Layer] !== layer.id;
         });
         // Update storage value with the filtered link array
-        this.context.workspaceState.update(`links-${this.uri}`, links);
+        // TODO
     }
 
     /**
      * Returns the stored array of link ids
      */
     get links(): string[][] {
-        let links = this.context.workspaceState.get<string[][]>(`links-${this.uri}`);
-        if(links){
-            return links;
-        }
-        else {
-            return [];
-        }
+        // let links = this.context.workspaceState.get<string[][]>(`links-${this.uri}`);
+        // if(links){
+        //     return links;
+        // }
+        // else {
+        //     return [];
+        // }
+        return [];
     }
 
     /**
@@ -166,9 +165,9 @@ export class DataStorage {
                 ],
             },
             figmaFiles: [
-                'fecZ7gbRIgcUr2B1aZEcWaYV',
-                '1aZbRIgcUr2BEcWaYVdhcM7g',
-                'cM7gbRW1aZdhaYVIgcUr2BEc',
+                'fecZ7gbRigCur2B1aZEcWaYV',
+                '1aZbRIgCur2BEcWaYVdhcM7g',
+                'cM7gbRW1aZdhaYVIgCur2BEc',
                 ...
             ]
         }
@@ -239,7 +238,7 @@ class FileStorage {
      * @param fileKey 
      */
     removeFigmaFile(fileKey: string){
-        let index = this.figmaFiles.indexOf(fileKey)
+        let index = this.figmaFiles.indexOf(fileKey);
         if(index >= 0){
             this.figmaFiles.splice(index, 1);
 

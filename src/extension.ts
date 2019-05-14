@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaLayer } from './sidebar';
-import { WorkspaceState as WorkspaceState } from './workspacestate';
+import { WorkspaceState as WorkspaceState, supportedLanguages } from './workspacestate';
 import { stat } from 'fs';
 import { LayerSelectorLink } from './link';
 
@@ -168,7 +168,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Reacts to a document changes after a small delay.
 	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
 	 */
-	let handleDocumentEdit = function(){
+	let handleDocumentEdit = function(change: vscode.TextDocumentChangeEvent){
 		// if(documentEditTimeout){
 		// 	clearTimeout(documentEditTimeout);
 		// }
@@ -188,7 +188,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Handles the event of a user switching to another editor
 	 */
 	let handleChangeEditor = function(){
-		// loadWorkspaceState(true);
+		state.handleEditorChange();
 	};
 
 	/**
@@ -199,7 +199,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let editor = CurrentFileUtil.getCurrentFile();
 		if(editor){
 			// Instantiate state
-			state = new WorkspaceState(editor, context, figmaDiagnostics);
+			state = new WorkspaceState(context, figmaDiagnostics);
 			if(fetchData){
 				state.fetchAllFigmaFiles();
 			}
@@ -226,6 +226,17 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	// Start everything
 	loadWorkspaceState(true);
+
+
+	// Watch changes in supported files
+	// if(vscode.workspace.workspaceFolders){
+	// 	let globPattern = `**/*.{${supportedLanguages.join(',')}}`;
+	// 	let watcher = vscode.workspace.createFileSystemWatcher(globPattern);
+		
+	// 	watcher.onDidChange((e: vscode.Uri)=>{
+	// 		console.log(e);
+	// 	});
+	// }
 }
 
 export function deactivate() {}

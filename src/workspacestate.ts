@@ -6,7 +6,7 @@ import { FigmaFile } from './figmafile';
 import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './sidebar';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
-const supportedLanguages = ['less']; // List of supported file types
+export const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
 const ignoreInternalLayersConfigName = 'IgnoreInternalLayers';
 
@@ -25,11 +25,11 @@ export class WorkspaceState {
     static statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
     // VSCode properties
-    private editor: vscode.TextEditor;
     private context: vscode.ExtensionContext;
-    private uri: vscode.Uri;
     private config: vscode.WorkspaceConfiguration;
     private diagnostics: vscode.DiagnosticCollection;
+    private files: vscode.Uri[];
+    private stylesheets: {[uri: string]: Stylesheet};
     
     // Persisted properties API
     private storage!: DataStorage; // for persisting and retrieving data
@@ -44,13 +44,21 @@ export class WorkspaceState {
 	 * @param editor Currently open editor
 	 * @param context extension context
 	 */
-	constructor(editor: vscode.TextEditor, context: vscode.ExtensionContext, diagnostics: vscode.DiagnosticCollection){
+	constructor(context: vscode.ExtensionContext, diagnostics: vscode.DiagnosticCollection){
         // Set vscode properties
-        this.editor = editor;
         this.context = context;
-        this.uri = this.editor.document.uri;
         this.diagnostics = diagnostics;
         this.config = vscode.workspace.getConfiguration();
+        this.files = [];
+        this.stylesheets = {};
+
+        // Get list of files and begin tracking them
+        vscode.workspace.findFiles(`**/*.{${supportedLanguages.join(',')}}`).then((fileURIs) => {
+            fileURIs.forEach(file => {
+                this.trackFile(file);
+            });
+        });
+
         // Load from storage
         this.load();
     }
@@ -60,21 +68,14 @@ export class WorkspaceState {
      */
     load() {
         // Load persisted data
-		this.storage = new DataStorage(this.uri.path, this.context);
+		this.storage = new DataStorage(this.context);
         
         // Set initial view states
         this.status = this.getDefaultStatus();
         this.loadSidebar();
+        this.loadStyleSheetView();
         this.createCssPropertiesProvider();
         // this.createLinksManagerProvider();
-		
-		// // Instantiate view the stylesheet view manager
-        // this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
-        // // Wait for the file parsing to end before continuing with loading
-        // this.stylesheet.addParsedFileCallback(()=>{
-        //     // Load links
-        //     this.updateViewsWithLinks();
-        // });
     }
 
     /**
@@ -83,6 +84,29 @@ export class WorkspaceState {
     dispose(){
         // Remove decorations
         this.stylesheet.clear();
+    }
+
+    /**
+     * Updates the state when the text editor changes
+     */
+    handleEditorChange(){
+        // Parse the new file
+        this.loadStyleSheetView();
+    }
+    
+    /**
+     * Begins tracking a supported file. To do that, it adds the file URI to a list of tracked files, 
+     * and also parses it and stores its parsed object in memory.
+     * @param fileURI URI of the file to be tracked
+     */
+    trackFile(fileURI: vscode.Uri){
+        // Add to list of files
+        this.files.push(fileURI);
+        // Parse and store it
+        vscode.workspace.openTextDocument(fileURI).then(document => {
+            // let stylesheet = new Stylesheet(fileURI, this.diagnostics);
+            // this.stylesheets[fileURI.fsPath] = stylesheet;
+        });
     }
 
 
@@ -106,7 +130,7 @@ export class WorkspaceState {
             let layer = this.getLayerById(ids[IdOrder.Layer]);
             let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
             if(scope && layer){
-                acc.push(new LayerSelectorLink(layer, scope));
+                acc.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
             }
             return acc;
         }, [] as LayerSelectorLink[]);
@@ -141,7 +165,7 @@ export class WorkspaceState {
 
     /**
      * Gets a map of links by either the scope or layer ID
-     * @param type IdOrder of the desired mapping
+     * @param type index of the desired mapping (from the IdOrder enum)
      */
     private _getLinksBy(type: IdOrder): LinksMap{
         let links = this.storage.links;
@@ -158,7 +182,7 @@ export class WorkspaceState {
                     linksArray = [];
                 }
                 // Add to array and to acc object
-                linksArray.push(new LayerSelectorLink(layer, scope));
+                linksArray.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
                 acc[key] = linksArray;
             }
             return acc;
@@ -174,12 +198,13 @@ export class WorkspaceState {
      * @param scope 
      */
     addLink(layer: FigmaLayer, scope: StylesheetScope) {
+        console.log(this.currentFilePath);
         // Create link
-        let link = new LayerSelectorLink(layer, scope);
+        let link = new LayerSelectorLink(this.currentFilePath, layer, scope);
         // Persist it
-        this.storage.addLink(link.ids);
+        // this.storage.addLink(link.ids);
         // Update views
-        this.updateViewsWithLinks();
+        // this.updateViewsWithLinks();
     }
 
     /**
@@ -222,6 +247,31 @@ export class WorkspaceState {
     ================*/
 
     /**
+     * Parses all stylesheets in the workspace and keeps them in memory
+     */
+    parseStyleSheets(){
+        // TODO
+    }
+    
+
+    /**
+     * Loads the view based on the current file
+     */
+    loadStyleSheetView(){
+
+        // Only load for supported file types
+        if(this.editor && supportedLanguages.includes(this.editor.document.languageId)){
+            // Instantiate view the stylesheet view manager
+            this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
+            // Wait for the file parsing to end before continuing with loading
+            this.stylesheet.addParsedFileCallback(()=>{
+                // Load links
+                this.updateViewsWithLinks();
+            });
+        }
+    }
+
+    /**
      * Returns all available selectors
      */
     get selectors(): string[] {
@@ -242,10 +292,11 @@ export class WorkspaceState {
      */
     highlightScopeByName(scopeName: string){
         let scope = this.stylesheet.getScope(scopeName);
-        if(scope){
+        let editor = this.editor;
+        if(scope && editor){
             let scopeRange = scope.getSelectorRange();
-            this.editor.revealRange(scopeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-            this.editor.selection = new vscode.Selection(scopeRange.start, scopeRange.end);
+            editor.revealRange(scopeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            editor.selection = new vscode.Selection(scopeRange.start, scopeRange.end);
         }
     }
 
@@ -270,7 +321,7 @@ export class WorkspaceState {
      * Fetches a figma file and builds its FigmaFile cache
      */
     public fetchFigmaFile(fileKey: string): boolean{
-        if(this.documentIsSetup){
+        if(this.isDocumentSetup){
             // Set status
             this.status = Status.SYNCING;
             const client = Figma.Client({ personalAccessToken: this.APIKey });
@@ -300,23 +351,9 @@ export class WorkspaceState {
         return false;
     }
 
-    // /**
-    //  * Updates the figma file
-    //  * @param figmaFile 
-    //  */
-    // set figmaFile(figmaFile: FigmaFile){
-    //     // Update internal representation of the figma file
-    //     this.storage.figmaFile = figmaFile;
-    //     
-    // }
-
-    // /**
-    //  * Returns the figma file
-    //  */
-    // get figmaFile(): FigmaFile {
-    //     return this.storage.figmaFile;
-    // }
-
+    /**
+     * Returns all cached figmaFile instances
+     */
     get figmaFiles(): FigmaFile[] {
         return this.storage.retrieveAllFigmaFiles();
     }
@@ -413,6 +450,17 @@ export class WorkspaceState {
         FILE & EXTENSION SETUP, CONFIGs
     ======================================*/
 
+    get editor(): vscode.TextEditor | undefined {
+        return vscode.window.activeTextEditor;
+    }
+
+    get currentFilePath(): string {
+        if(this.editor){
+            return this.editor.document.uri.fsPath;
+        }
+        return '';
+    }
+
     /**
      * Returns the filekey associated with this document
      */
@@ -430,7 +478,7 @@ export class WorkspaceState {
     /**
      * Checks whether the document is setup to sync with a figma document
      */
-    get documentIsSetup(): boolean {
+    get isDocumentSetup(): boolean {
         return this.fileKeys.length > 0 && this.APIKey !== undefined;
     }
 
@@ -497,10 +545,7 @@ export class WorkspaceState {
      * Returns a suggested status based on the current state of persistent components and language ID
      */
     getDefaultStatus(): Status {
-        if(!supportedLanguages.includes(this.editor.document.languageId)){
-            return Status.UNSUPPORTED;
-        }
-        if(this.documentIsSetup) {
+        if(this.isDocumentSetup) {
             return Status.SYNCED;
         }
         return Status.NOT_ATTACHED;
