@@ -4,6 +4,9 @@ import { DataStorage } from './storage';
 import { Stylesheet, CssProperties } from './stylesheet';
 import { FigmaFile } from './figmafile';
 import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider } from './sidebar';
+import { request } from 'https';
+import Axios from 'axios';
+import { SVGOFactory } from './util/svgo-util';
 
 export const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
@@ -259,12 +262,7 @@ export class WorkspaceState {
      * Displays the CSS properties for a layer in the Sidebar CSS Properties view
      * @param layer 
      */
-    showCssProperties(layer: FigmaLayer){
-        // PROBABLY REMOVE I'm not sure showing and hiding things is the best UX
-        // Set context variable to show or hide the view
-        // let selectedStyledItem = layer.hasStyles ? true : false;
-        // vscode.commands.executeCommand("setContext", "selectedStyledItem", selectedStyledItem);
-        
+    showCssProperties(layer: FigmaLayer){        
         // Create provider 
         this.createCssPropertiesProvider(layer.styles);
     }
@@ -279,6 +277,39 @@ export class WorkspaceState {
         });
     }
 
+    /**
+     * Gets an SVG representation of a layer
+     * @param fileId 
+     * @param layerId 
+     * @param progress 
+     */
+    getSVG(fileId:string, layerId: string): Promise<string>{
+        return new Promise(resolve => {
+            // First, retrieve the SVG URL from the Figma API
+            const client = Figma.Client({ personalAccessToken: this.APIKey });
+            client.fileImages(fileId, {
+                scale: 1,
+                format: "svg",
+                ids: [layerId]
+            }).then(value => {
+    
+                // Retrieved the URL. Now read its content.
+                let svgURL = Object.values(value.data.images)[0];
+                Axios.get(svgURL, {responseType: 'image/svg+xml' }).then(response => {
+                    
+                    // Retrieved the SVG data
+                    let svg = response.data;
+                    // Optimize it
+                    let svgo = SVGOFactory.getInstance();
+                    svgo.optimize(svg).then(optSvg => {
+
+                        // Resolve promise with optimized SVG.
+                        resolve(optSvg.data);
+                    });
+                });          
+            });
+        });
+    }
 
 
 

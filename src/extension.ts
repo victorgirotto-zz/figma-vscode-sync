@@ -94,19 +94,56 @@ export function activate(context: vscode.ExtensionContext) {
 	let openInFigma = function(layer: FigmaLayer){
 		vscode.env.openExternal(vscode.Uri.parse(`https://www.figma.com/file/${layer.fileKey}/?node-id=${layer.layerId}`));
 	};
+	
+	/**
+	 * Retrieves the SVG for a layer while informing the user of the status of this process
+	 * @param layer 
+	 */
+	let exportSVG = function(layer: FigmaLayer){
+		// Initiate progress notification
+		vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Generating and optimizing the SVG...",
+			cancellable: true
+		}, (progress, token) => {
+			return new Promise(resolve => {
+				// Retrieve the SVG. Once done, resolve this promise.
+				state.getSVG(layer.fileKey, layer.layerId).then(svg => {
+					resolve();
+					vscode.env.clipboard.writeText(svg);
+					vscode.window.showInformationMessage('SVG copied to the clipboard');
+				});
+			});
+		});
+	};
+
+	/**
+	 * 
+	 * @param layer 
+	 */
+	let extractCopy = function(layer: FigmaLayer){
+		// Get text content
+		let textContent: string[] = Array.from(new Set(layer.getTextContent())); // Using set to remove duplicates
+
+		// Create new document with the text content and focus on it
+		vscode.workspace.openTextDocument({content: textContent.join('\n\n')}).then(textDocument => {
+			vscode.window.showTextDocument(textDocument);
+		});
+	};
+	
+	/**
+	 * 
+	 * @param layer 
+	 */
+	let postComment = function(layer: FigmaLayer){
+		console.log('TODO post comment');
+	};
 
 	/**
 	 * Reacts to a document changes after a small delay.
 	 * TODO Right now, I parse everything again, which may become very resource intensive. Optimize this.
 	 */
-	let handleDocumentEdit = function(change: vscode.TextDocumentChangeEvent){
-		// if(documentEditTimeout){
-		// 	clearTimeout(documentEditTimeout);
-		// }
-		// documentEditTimeout = setTimeout(() => { 
-		// 	loadWorkspaceState(false); 
-		// }, documentEditWait);
-	};
+	let handleDocumentEdit = function(change: vscode.TextDocumentChangeEvent){};
 
 	/**
 	 * Handlers the request to refresh components
@@ -118,9 +155,7 @@ export function activate(context: vscode.ExtensionContext) {
 	/**
 	 * Handles the event of a user switching to another editor
 	 */
-	let handleChangeEditor = function(){
-		// TODO
-	};
+	let handleChangeEditor = function(){};
 
 	/**
 	 * Instantiates a file state based on persisted data
@@ -147,6 +182,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.copytoclipboard', copyToClipboard));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.openInFigma', openInFigma));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.exportSVG', exportSVG));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.extractCopy', extractCopy));
+	context.subscriptions.push(vscode.commands.registerCommand('figmasync.postComment', postComment));
 
 	// Event handlers
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(handleChangeEditor));

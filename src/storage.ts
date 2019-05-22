@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { FigmaFile } from './figmafile';
-import { FigmaLayer } from './sidebar';
 import * as fs from 'fs';
 import * as path from 'path';
 

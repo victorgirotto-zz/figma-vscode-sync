@@ -210,6 +210,25 @@ export class FigmaLayer {
         }
         return styles;
     }
+
+    /**
+     * Recursively returns all text content from this layer and all of its children
+     */
+    getTextContent(): string[] {
+        let texts: string[] = [];
+
+        if(this.type === 'TEXT'){
+            // If this is a text layer, return its text
+            texts = [this.node.characters];
+        } else {
+            // This is not a text layer. Get its children's text and concatenate with current array
+            this.children.forEach(child => {
+                texts = [...texts, ...child.getTextContent()];
+            });
+        }
+        // Return texts
+        return texts;
+    }
 }
 
 
@@ -279,7 +298,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param element 
      */
     getTreeItem(element: FigmaLayer): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return new LayerTreeItem(element);;
+        return new LayerTreeItem(element);
     }
 
     /**
@@ -381,7 +400,7 @@ export class LayerTreeItem extends vscode.TreeItem {
     }
 
     /**
-     * 
+     * Returns a boolean indicating whether this layer has any styles or not
      */
     get hasStyles(): boolean {
         return this.layer.hasStyles && this.layer.type !== 'DOCUMENT';
