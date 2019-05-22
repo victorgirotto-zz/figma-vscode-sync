@@ -163,7 +163,7 @@ export class WorkspaceState {
         if(this.isDocumentSetup){
             // Set status
             this.status = Status.SYNCING;
-            const client = Figma.Client({ personalAccessToken: this.APIKey });
+            const client = this.figmaClient;
             client.file(fileKey).then(({ data }) => {
                 // Retrieve cache if any
                 let figmaFile = this.getFigmaFile(fileKey);
@@ -286,7 +286,7 @@ export class WorkspaceState {
     getSVG(fileId:string, layerId: string): Promise<string>{
         return new Promise(resolve => {
             // First, retrieve the SVG URL from the Figma API
-            const client = Figma.Client({ personalAccessToken: this.APIKey });
+            const client = this.figmaClient;
             client.fileImages(fileId, {
                 scale: 1,
                 format: "svg",
@@ -309,6 +309,34 @@ export class WorkspaceState {
                 });          
             });
         });
+    }
+
+    /**
+     * Posts a comment on the Figma file
+     * @param comment 
+     * @param layer 
+     */
+    postComment(comment:string, layer: FigmaLayer): Promise<boolean> {
+        return new Promise(resolve => {
+            let boundingBox: Figma.Rect = layer.node.absoluteBoundingBox;
+            if(boundingBox){
+                let client = this.figmaClient;
+                console.log(boundingBox);
+                client.postComment(layer.fileKey, {
+                    message: comment,
+                    client_meta: {
+                        x: boundingBox.x,
+                        y: boundingBox.y
+                    }
+                }).then(value => {
+                    resolve(true);
+                });
+            }
+        });
+    }
+
+    get figmaClient(): Figma.ClientInterface {
+        return Figma.Client({ personalAccessToken: this.APIKey });
     }
 
 

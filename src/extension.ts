@@ -118,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * 
+	 * Extracts all the text values from the layer and its children
 	 * @param layer 
 	 */
 	let extractCopy = function(layer: FigmaLayer){
@@ -132,11 +132,21 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 	
 	/**
-	 * 
+	 * Posts a comment at the Figma file
 	 * @param layer 
 	 */
 	let postComment = function(layer: FigmaLayer){
-		console.log('TODO post comment');
+		// First, prompt user for the comment
+		vscode.window.showInputBox({
+			prompt: `Write the comment. It will be placed over the layer: ${layer.name}`
+		}).then(value => {
+			if(value){
+				// If the user added a comment, post it
+				state.postComment(value, layer).then(isPosted => {
+					vscode.window.showInformationMessage('Your comment was posted on Figma');
+				});			
+			}
+		});
 	};
 
 	/**
