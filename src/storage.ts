@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { FigmaFile } from './figmafile';
-import { IdOrder } from './link';
 import { FigmaLayer } from './sidebar';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -81,57 +80,6 @@ export class DataStorage {
     }
 
     /**
-     * Adds a link between a layer and a css scope
-     * @param layer 
-     */
-    addLink(linkIds: string[]){
-        // Get current links
-        let links = this.links;
-        // Check if link already exists
-        let linkExists = links.some((storedLinkIds) => {
-            // Return true if both layer and scope ids are the same
-            return storedLinkIds[IdOrder.Layer] === linkIds[IdOrder.Layer] && 
-                storedLinkIds[IdOrder.Scope] === linkIds[IdOrder.Scope];
-        });
-
-        // If it doesn't, add the new link
-        if(!linkExists){
-            // Add the new link
-            links.push(linkIds);
-            // Update storage value
-            // TODO
-        }
-    }
-
-    /**
-     * Removes the link for a given layer
-     * @param layerId 
-     */
-    removeLayerLinks(layer: FigmaLayer){
-        let links = this.links;
-        // Filter out all links that belong to this layer
-        links = links.filter((link) => {
-            return link[IdOrder.Layer] !== layer.id;
-        });
-        // Update storage value with the filtered link array
-        // TODO
-    }
-
-    /**
-     * Returns the stored array of link ids
-     */
-    get links(): string[][] {
-        // let links = this.context.workspaceState.get<string[][]>(`links-${this.uri}`);
-        // if(links){
-        //     return links;
-        // }
-        // else {
-        //     return [];
-        // }
-        return [];
-    }
-
-    /**
      * Erases all figma sync cache data
      */
     removeFile(fileKey: string){
@@ -140,9 +88,6 @@ export class DataStorage {
 
         // Remove from file storate
         this.fileStorage.removeFigmaFile(fileKey);
-
-        // TODO remove links
-        // this.context.workspaceState.update(`links-${this.uri}`, undefined);
 
     }
 
@@ -154,16 +99,6 @@ export class DataStorage {
  * Sample structure:
  * 
         {
-            links: {
-                'c:/system/styles/style.less': [
-                        ['12:89', 'body .button'],
-                        ...
-                ], 
-                'c:/system/styles/anotehrStyle.less': [
-                        ['71:24', 'body .button.primary'],
-                        ...
-                ],
-            },
             figmaFiles: [
                 'fecZ7gbRigCur2B1aZEcWaYV',
                 '1aZbRIgCur2BEcWaYVdhcM7g',
@@ -177,10 +112,6 @@ class FileStorage {
      * Path of the file meant to store this data
      */
     filePath: string;
-    /**
-     * Dictionary of files and links between figma layers and scopes witin those files
-     */
-    links: {[filePath: string]: string[][]} = {};
     /**
      * Array of figma file keys that are connected to this workspace
      */
@@ -211,7 +142,6 @@ class FileStorage {
                 // Update the instance with the file values
                 let contentsJSON = JSON.parse(contents);
                 this.figmaFiles = contentsJSON.figmaFiles;
-                this.links = contentsJSON.links;
             }
 
         } catch (error) {
@@ -252,7 +182,6 @@ class FileStorage {
      */
     save(){
         let JSONString = JSON.stringify({
-                links: this.links,
                 figmaFiles: this.figmaFiles
             }, null, 4);
 

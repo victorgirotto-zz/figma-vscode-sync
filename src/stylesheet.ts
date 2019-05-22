@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as postcss from 'postcss';
 import * as path from 'path';
 import * as fs from 'fs';
-import { LinksMap, LayerSelectorLink } from './link';
 import { CssUtil } from './util/css-util';
 
 // Type of css properties
@@ -27,7 +26,6 @@ export class Stylesheet {
     private version!: number;
     private decorations!: vscode.TextEditorDecorationType[];
     private warnings!: vscode.Diagnostic[];
-    private links!: LinksMap;
 
     // Properties to manage the file parsing lifecycle
     private parsePromise?: postcss.LazyResult = undefined;
@@ -52,7 +50,6 @@ export class Stylesheet {
         this.version = this.document.version;
         this.decorations = [];
         this.warnings = [];
-        this.links = {};
         
         // Parse the file
         this.parseFile();
@@ -155,52 +152,6 @@ export class Stylesheet {
     }
 
     /**
-	 * 
-	 * @param layer 
-	 */
-	private addCodeDecoration(link: LayerSelectorLink, scope: StylesheetScope){
-		// let editor = this.editor;
-		// if(editor){
-		// 	// Create range object
-        //     let range = scope.getRange(scope.selector);
-
-		// 	// Create layer path for hover information
-        //     let args = JSON.stringify([{layerId: link.layerId}]);
-		// 	let hoverMessageMarkdown = new vscode.MarkdownString(
-        //         `Linked with [${link.layerName}](command:figmasync.revealLayer?${encodeURIComponent(args)} "Open layer in sidebar")`
-        //         // link.layer.getFormattedStyles(1)
-        //     );
-        //     // Enable links in the markdown string
-        //     hoverMessageMarkdown.isTrusted = true;
-
-		// 	// Create decoration
-		// 	const options: vscode.DecorationOptions[] = [{ range: range, hoverMessage: hoverMessageMarkdown}];
-        //     const decorationType = this.getLinkedSelectorDecoration();
-            
-        //     // Store decoration
-        //     this.decorations.push(decorationType);
-            
-        //     // Add them to the editor
-		// 	editor.setDecorations(decorationType, options);
-		// }
-    }
-
-    /**
-	 * Gets the code decoration style for selectors linked with a Figma layer
-	 */
-	private getLinkedSelectorDecoration(): vscode.TextEditorDecorationType {
-		return vscode.window.createTextEditorDecorationType({
-            color: '#917AFF',
-            light: {
-                color: '#7357FF'
-            },
-            gutterIconPath: path.join(__filename, '..', '..', 'media', 'guttericon.svg'),
-            gutterIconSize: 'auto',
-			isWholeLine: false,
-		});
-    }
-
-    /**
      * Gets a scope based on the full css selector
      * 
      * @param selector 
@@ -274,16 +225,6 @@ export class Stylesheet {
      * PUBLIC API 
      */
 
-     /**
-     * Removes all decorations currently in place
-     */
-    clear() {
-        // // Remove decorations
-        // this.decorations.forEach(d => {
-        //     d.dispose();
-        // });
-    }
-
     /**
      * Gets a scope by it's full css selector
      * TODO implement a scope map for faster access
@@ -299,40 +240,6 @@ export class Stylesheet {
      */
     getAllSelectors(): string[] {
         return this.baseScope.getAllSelectorsList();
-    }
-
-    
-    /**
-     * Updates the links in the stylesheet file
-     * @param links 
-     */
-    updateLinks(links: LinksMap){
-        // TODO
-    }
-
-    /**
-     * Generates editor warning messages for properties within a scope
-     * @param scope 
-     * @param layerStyles Reference CssProperties for the scope
-     */
-    getWarnings(scope: StylesheetScope, layerStyles: CssProperties): vscode.Diagnostic[] {
-        let warnings: vscode.Diagnostic[] = [];
-        // Find different and missing properties
-        let missing = scope.findMissingProperties(layerStyles);
-        let different = scope.diffIntersectingCssProperties(layerStyles);
-        // Create warnings for missing properties
-        for(let missingProp in missing){
-            let missingValue = layerStyles[missingProp];
-            let message = `Figma: missing ${missingProp}: ${missingValue};`;
-            warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
-        }
-        // Create warnings for differences
-        for(let diffProp in different){
-            let diffValue = different[diffProp];
-            let message = `Figma: expected ${diffProp}: ${diffValue};`;
-            warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
-        }
-        return warnings;        
     }
 }
 

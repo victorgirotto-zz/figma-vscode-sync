@@ -10,7 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"workspaceContains:*.less"
+		"workspaceContains:*.less, *.css"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -24,27 +24,11 @@
 				}
 			},
 			{
-				"command": "figmasync.unlinkFile",
-				"title": "Stop syncing this file with Figma",
-				"icon": {
-					"dark": "media/delete.svg",
-					"light": "media/delete-light.svg"
-				}
-			},
-			{
 				"command": "figmasync.refreshComponents",
 				"title": "Refresh files",
 				"icon": {
 					"dark": "media/refresh.svg",
 					"light": "media/refresh-light.svg"
-				}
-			},
-			{
-				"command": "figmasync.linkLayer",
-				"title": "Link Layer",
-				"icon": {
-					"light": "media/link.svg",
-					"dark": "media/link.svg"
 				}
 			},
 			{
@@ -54,10 +38,6 @@
 			{
 				"command": "figmasync.showCssProperties",
 				"title": "Show CSS Properties"
-			},
-			{
-				"command": "figmasync.showLink",
-				"title": "Show linked elements"
 			},
 			{
 				"command": "figmasync.openInFigma",
@@ -93,18 +73,8 @@
 			],
 			"view/item/context": [
 				{
-					"command": "figmasync.linkLayer",
-					"when": "view == figmaComponents && viewItem == styled",
-					"group": "inline"
-				},
-				{
 					"command": "figmasync.openInFigma",
 					"when": "view == figmaComponents"
-				},
-				{
-					"command": "figmasync.unlinkFile",
-					"when": "view == figmaComponents && viewItem == document",
-					"group": "inline"
 				}
 			]
 		},
@@ -135,10 +105,6 @@
 		},
 		"views": {
 			"figmaSync": [
-				{
-					"id": "linksManager",
-					"name": "Linked layers"
-				},
 				{
 					"id": "figmaComponents",
 					"name": "Linked Figma files"

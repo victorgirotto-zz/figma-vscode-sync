@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { CurrentFileUtil } from './util/current-file-util';
 import { FigmaLayer } from './sidebar';
 import { WorkspaceState as WorkspaceState, supportedLanguages } from './workspacestate';
-import { stat } from 'fs';
-import { LayerSelectorLink } from './link';
 
 let state: WorkspaceState; // The FileState manages the persistant state for every file
 let figmaDiagnostics: vscode.DiagnosticCollection; // Diagnostics collection for Figma sync
@@ -52,19 +50,6 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	/**
-	 * Stops syncing with this file
-	 */
-	let unlinkFile = function(layer: FigmaLayer){
-		// Removes figma sync for this file
-		promptYesOrNo(`Unlink the Figma file "${layer.name}"?`, (result: string | undefined) => {
-			if(result && result.toLowerCase() === 'yes'){
-				// Remove files
-				state.unlinkFigmaFile(layer.fileKey);
-			}	
-		});
-	};
-
-	/**
 	 * Prompts the user a yes or no question, and executes a resolveFn function when a choice is made
 	 * @param placeholder the message the user will be propted with
 	 * @param resolveFn The function execute when the choice is made
@@ -75,51 +60,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}).then((result: string | undefined) => {
 			resolveFn(result);
 		});
-	};
-
-	/**
-	 * 
-	 * @param layer 
-	 */
-	let linkLayer = function(layer: FigmaLayer){
-		// if(state.isLayerLinked(layer)){
-		// 	// A link already exists. Prompt about removing it.
-		// 	promptYesOrNo('Do you want to remove all links for this layer?', (result: string | undefined) => {
-		// 		if(result && result === 'Yes'){
-		// 			state.removeLayerLink(layer);
-		// 		}
-		// 	});
-		// } else {
-		// 	// There is no link. Prompt for layer.
-		// 	chooseSelectorPrompt(layer);
-		// }
-	};
-
-	/**
-	 * 
-	 * @param layer 
-	 */
-	let chooseSelectorPrompt = function(layer: FigmaLayer){
-		// // Get list of selectors to populate quickpick
-		// let allSelectors = state.selectors;
-
-		// // Prompt user
-		// vscode.window.showQuickPick(allSelectors, {
-		// 	placeHolder: `Choose the selector you want to link with layer "${layer.name}"`			
-		// }).then((selector: string | undefined) => {
-		// 	// Check if a selector was chosen
-		// 	if(!selector){
-		// 		// Delete link for the layer
-		// 		state.removeLayerLink(layer);
-		// 	} else {
-		// 		// Set link
-		// 		let scope = state.getScopeByFullSelector(selector);
-		// 		if(scope){
-		// 			// Found scope. Add link.
-		// 			state.addLink(layer, scope);
-		// 		}
-		// 	}
-		// });
 	};
 
 	/**
@@ -138,15 +78,6 @@ export function activate(context: vscode.ExtensionContext) {
 	 */
 	let showCssProperties = function(layer: FigmaLayer){
 		state.showCssProperties(layer);
-	};
-
-	/**
-	 * Highlights the linked elements in their respective views
-	 * @param args 
-	 */
-	let showLink = function(link: LayerSelectorLink){
-		state.revealLayerById(link.layerId);
-		state.highlightScopeByName(link.scopeId);
 	};
 	
 	/**
@@ -212,11 +143,8 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register Commands
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.syncLessFile', setupFile));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.refreshComponents', refreshComponents));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.unlinkFile', unlinkFile));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.linkLayer', linkLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.revealLayer', revealLayer));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showCssProperties', showCssProperties));
-	context.subscriptions.push(vscode.commands.registerCommand('figmasync.showLink', showLink));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.copytoclipboard', copyToClipboard));
 	context.subscriptions.push(vscode.commands.registerCommand('figmasync.openInFigma', openInFigma));
 
@@ -226,17 +154,6 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	// Start everything
 	loadWorkspaceState(true);
-
-
-	// Watch changes in supported files
-	// if(vscode.workspace.workspaceFolders){
-	// 	let globPattern = `**/*.{${supportedLanguages.join(',')}}`;
-	// 	let watcher = vscode.workspace.createFileSystemWatcher(globPattern);
-		
-	// 	watcher.onDidChange((e: vscode.Uri)=>{
-	// 		console.log(e);
-	// 	});
-	// }
 }
 
 export function deactivate() {}

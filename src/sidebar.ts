@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { FigmaFile, ComponentsMeta } from './figmafile';
-import { LinksMap, LayerSelectorLink } from './link';
 import { CssProperties } from './stylesheet';
 import { FigmaUtil } from './util/figma-util';
 
@@ -55,7 +54,7 @@ export class FigmaLayer {
 
     get styles(): CssProperties {
 
-        // A document should not be linkable
+        // A document should not have styles
         if(this.type === 'DOCUMENT'){
             return {};
         }
@@ -222,41 +221,27 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
     private changeTreeDataEmitter: vscode.EventEmitter<FigmaLayer> = new vscode.EventEmitter<FigmaLayer>();
 	readonly onDidChangeTreeData: vscode.Event<FigmaLayer> = this.changeTreeDataEmitter.event;
 
-    links!: LinksMap;
     treeItems: {[nodeId: string]: FigmaLayer}; // Direct access to any layer by ID
     rootItems: FigmaLayer[]; // List of root layers
     ignoreInternalLayers: boolean;
 
     /**
-     * Builds the treeview provider from a list of figma components and links
+     * Builds the treeview provider from a list of figma components
      * @param figmaFiles
      * @param ignoreInternalLayers boolean indicating whether internal (unecessary) layers should be ignored or not
      */
     constructor(figmaFiles: FigmaFile[], ignoreInternalLayers: boolean){
         this.treeItems = {};
         this.rootItems = [];
-        this.links = {};
         this.ignoreInternalLayers = ignoreInternalLayers;
     
-        // Create map
+        // Create map of layers
         if(figmaFiles){
             figmaFiles.forEach(file => {
                 file.nodes.forEach(component => {
                     this.rootItems.push(this.createTreeItemMap(file.key, component, file.meta));
                 });
             });
-        }
-    }
-
-    /**
-     * Updates the links in the view
-     * @param links 
-     */
-    updateLinks(links: LinksMap){
-        this.links = links;
-        // Refresh each layer
-        for(let layerId in links){
-            this.refresh(links[layerId][0].layer);
         }
     }
 
@@ -294,11 +279,7 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
      * @param element 
      */
     getTreeItem(element: FigmaLayer): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        let treeItem = new LayerTreeItem(element);
-        if(element.id in this.links){
-            treeItem.links = this.links[element.id];
-        }
-        return treeItem;
+        return new LayerTreeItem(element);;
     }
 
     /**
@@ -350,19 +331,22 @@ export class FigmaLayerProvider implements vscode.TreeDataProvider<FigmaLayer> {
 export class LayerTreeItem extends vscode.TreeItem {
     
     layer: FigmaLayer;
-    links: LayerSelectorLink[];
 
     constructor(layer: FigmaLayer){
+        // Determine collapsible state
         // If this is a kind of node that can house other nodes, set the collapsible state accordingly.
         let collapsibleState;
-        if(['DOCUMENT', 'FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(layer.type)){
+        if(['FRAME', 'GROUP', 'COMPONENT', 'INSTANCE'].includes(layer.type)){
             collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+        } else if(layer.type === 'DOCUMENT'){
+            collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
         } else {
             collapsibleState = vscode.TreeItemCollapsibleState.None;
         }
+
+        // Build the item
         super(layer.name, collapsibleState);
         this.layer = layer;
-        this.links = [];
         this.command = {
             command: 'figmasync.showCssProperties',
             title: 'Show CSS Properties for this layer',
@@ -396,23 +380,6 @@ export class LayerTreeItem extends vscode.TreeItem {
         return this.layer.name;
     }
 
-    get description(): string {
-        if(this.isLinked){
-            // Add all scope names
-            let str = this.links.map(link => {
-                return link.scopeName;
-            }).join(' | ');
-
-            // Remove newlines and return
-            return str.replace(/\r?\n|\r/g, '');
-        }
-        return '';
-    }
-
-    get isLinked(): boolean {
-        return this.links.length > 0;
-    }
-
     /**
      * 
      */
@@ -423,12 +390,10 @@ export class LayerTreeItem extends vscode.TreeItem {
     get iconPath() {
         // Get correct icon folder
         let folder = 'active';
-        if(!this.isLinked){
-            if(this.hasStyles){
-                folder = 'inactive';
-            } else {
-                folder = 'disabled';
-            }
+        if(this.hasStyles){
+            folder = 'inactive';
+        } else {
+            folder = 'disabled';
         }
         // Return icon path
         return {
@@ -459,39 +424,4 @@ export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
         }
         return props;
     }
-}
-
-/**
- * Provider for the list of links in the sidebar
- */
-export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelectorLink>{
-    
-    /**
-     * 
-     * Map between a file and a list of links
-     */
-    fileLinksMap: {[filePath: string]: LayerSelectorLink[]} = {};
-
-    constructor(fileLinksMap?: {[filePath: string]: LayerSelectorLink[]}){
-        if(fileLinksMap){
-            this.fileLinksMap = fileLinksMap;
-        }
-    }
-
-    getTreeItem(element: LayerSelectorLink): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        let item = new vscode.TreeItem(element.layerName, vscode.TreeItemCollapsibleState.None);
-        item.description = element.scopeName.replace(/\r?\n|\r/g, '');
-        item.iconPath = path.join(__filename, '..', '..', 'media', 'link.svg');
-        item.command = {
-            command: 'figmasync.showLink',
-            title: 'View linked elements',
-            arguments: [element]
-        };
-        return item;
-    }
-    
-    getChildren(element?: LayerSelectorLink): vscode.ProviderResult<LayerSelectorLink[]> {
-        throw Error('Not implemented');
-    }
-
 }

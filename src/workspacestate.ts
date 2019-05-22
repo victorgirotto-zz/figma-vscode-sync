@@ -4,7 +4,6 @@ import { DataStorage } from './storage';
 import { Stylesheet, CssProperties } from './stylesheet';
 import { FigmaFile } from './figmafile';
 import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider } from './sidebar';
-import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 export const supportedLanguages = ['less']; // List of supported file types
 const APIKeyConfigName = 'APIKey';
@@ -69,18 +68,6 @@ export class WorkspaceState {
         this.status = this.getDefaultStatus();
         this.loadSidebar();
         this.createCssPropertiesProvider();
-        this.createLinksManagerProvider();
-    }
-
-    /**
-     * Removes any lingering elements from the screen
-     */
-    dispose(){ 
-        // Remove decorations from all stylesheets
-        for(let path in this.stylesheets){
-            let stylesheet = this.stylesheets[path];
-            stylesheet.clear();
-        }
     }
     
     /**
@@ -97,101 +84,6 @@ export class WorkspaceState {
         });
     }
 
-
-    /*==========
-        LINKS
-    ============*/
-
-    /**
-     * Returns a list of all link IDs
-     */
-    get linksIds(): string[][] {
-        return this.storage.links;
-    }
-
-    /**
-     * Returns an array representing all existing links between figma layers and selectors
-     */
-    get links(): LayerSelectorLink[] {
-        // let linkIds = this.linksIds;
-        // let links = linkIds.reduce((acc, ids) => {
-        //     let layer = this.getLayerById(ids[IdOrder.Layer]);
-        //     let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
-        //     if(scope && layer){
-        //         acc.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
-        //     }
-        //     return acc;
-        // }, [] as LayerSelectorLink[]);
-        // return links;
-        throw Error('Not implemented');
-    }
-
-    /**
-     * Returns a set of all existing links indexed by the layer id
-     */
-    get linksByLayer(): LinksMap {
-        // return this._getLinksBy(IdOrder.Layer);
-        throw Error('Not implemented');
-    }
-    
-    /**
-     * Returns a set of all existing links indexed by the layer id
-     */
-    get linksBySelector(): LinksMap {
-        // return this._getLinksBy(IdOrder.Scope);
-        throw Error('Not implemented');
-    }
-
-    /**
-     * Returns a boolean stating whether this layer is linked or not
-     * @param layer 
-     */
-    isLayerLinked(layer: FigmaLayer): boolean{
-        // let links = this.linksByLayer;
-        // if(layer.id in links){
-        //     return true;
-        // }
-        // return false;
-        throw Error('Not implemented');
-    }
-
-    /**
-     * Gets a map of links by either the scope or layer ID
-     * @param type index of the desired mapping (from the IdOrder enum)
-     */
-    private _getLinksBy(type: IdOrder): LinksMap{
-        // let links = this.storage.links;
-        // let linksMap = links.reduce((acc, ids) => {
-        //     // Retrieve both
-        //     let layer = this.getLayerById(ids[IdOrder.Layer]);
-        //     let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
-        //     let key = ids[type];
-        //     // If both found, add to object
-        //     if(layer && scope){
-        //         let linksArray = acc[key];
-        //         if(!linksArray){
-        //             // If this is the first link for this layer, create the array
-        //             linksArray = [];
-        //         }
-        //         // Add to array and to acc object
-        //         linksArray.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
-        //         acc[key] = linksArray;
-        //     }
-        //     return acc;
-        // }, {} as LinksMap);
-        // return linksMap;
-        throw Error('Not implemented');
-    }
-    
-    /**
-     * Creates the provider for the links view
-     */
-    createLinksManagerProvider(){
-        // Update links in views
-        // this.figmaLayerProvider.updateLinks(this.linksByLayer);
-        // this.stylesheet.updateLinks(this.linksBySelector);
-        
-    }
 
     /*===============
         STYLESHEET
