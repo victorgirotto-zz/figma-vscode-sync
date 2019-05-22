@@ -461,9 +461,22 @@ export class CssPropertiesProvider implements vscode.TreeDataProvider<string[]>{
     }
 }
 
+/**
+ * Provider for the list of links in the sidebar
+ */
 export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelectorLink>{
+    
+    /**
+     * 
+     * Map between a file and a list of links
+     */
+    fileLinksMap: {[filePath: string]: LayerSelectorLink[]} = {};
 
-    constructor(public links?: LayerSelectorLink[]){}
+    constructor(fileLinksMap?: {[filePath: string]: LayerSelectorLink[]}){
+        if(fileLinksMap){
+            this.fileLinksMap = fileLinksMap;
+        }
+    }
 
     getTreeItem(element: LayerSelectorLink): vscode.TreeItem | Thenable<vscode.TreeItem> {
         let item = new vscode.TreeItem(element.layerName, vscode.TreeItemCollapsibleState.None);
@@ -478,12 +491,7 @@ export class LinksManagerProvider implements vscode.TreeDataProvider<LayerSelect
     }
     
     getChildren(element?: LayerSelectorLink): vscode.ProviderResult<LayerSelectorLink[]> {
-        let children: LayerSelectorLink[] = [];
-        if(!element && this.links){
-            // This is the root
-            children = this.links;
-        }
-        return children;
+        throw Error('Not implemented');
     }
 
 }

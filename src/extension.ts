@@ -82,17 +82,17 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param layer 
 	 */
 	let linkLayer = function(layer: FigmaLayer){
-		if(state.isLayerLinked(layer)){
-			// A link already exists. Prompt about removing it.
-			promptYesOrNo('Do you want to remove all links for this layer?', (result: string | undefined) => {
-				if(result && result === 'Yes'){
-					state.removeLayerLink(layer);
-				}
-			});
-		} else {
-			// There is no link. Prompt for layer.
-			chooseSelectorPrompt(layer);
-		}
+		// if(state.isLayerLinked(layer)){
+		// 	// A link already exists. Prompt about removing it.
+		// 	promptYesOrNo('Do you want to remove all links for this layer?', (result: string | undefined) => {
+		// 		if(result && result === 'Yes'){
+		// 			state.removeLayerLink(layer);
+		// 		}
+		// 	});
+		// } else {
+		// 	// There is no link. Prompt for layer.
+		// 	chooseSelectorPrompt(layer);
+		// }
 	};
 
 	/**
@@ -100,26 +100,26 @@ export function activate(context: vscode.ExtensionContext) {
 	 * @param layer 
 	 */
 	let chooseSelectorPrompt = function(layer: FigmaLayer){
-		// Get list of selectors to populate quickpick
-		let allSelectors = state.selectors;
+		// // Get list of selectors to populate quickpick
+		// let allSelectors = state.selectors;
 
-		// Prompt user
-		vscode.window.showQuickPick(allSelectors, {
-			placeHolder: `Choose the selector you want to link with layer "${layer.name}"`			
-		}).then((selector: string | undefined) => {
-			// Check if a selector was chosen
-			if(!selector){
-				// Delete link for the layer
-				state.removeLayerLink(layer);
-			} else {
-				// Set link
-				let scope = state.getScopeByFullSelector(selector);
-				if(scope){
-					// Found scope. Add link.
-					state.addLink(layer, scope);
-				}
-			}
-		});
+		// // Prompt user
+		// vscode.window.showQuickPick(allSelectors, {
+		// 	placeHolder: `Choose the selector you want to link with layer "${layer.name}"`			
+		// }).then((selector: string | undefined) => {
+		// 	// Check if a selector was chosen
+		// 	if(!selector){
+		// 		// Delete link for the layer
+		// 		state.removeLayerLink(layer);
+		// 	} else {
+		// 		// Set link
+		// 		let scope = state.getScopeByFullSelector(selector);
+		// 		if(scope){
+		// 			// Found scope. Add link.
+		// 			state.addLink(layer, scope);
+		// 		}
+		// 	}
+		// });
 	};
 
 	/**
@@ -188,7 +188,7 @@ export function activate(context: vscode.ExtensionContext) {
 	 * Handles the event of a user switching to another editor
 	 */
 	let handleChangeEditor = function(){
-		state.handleEditorChange();
+		// TODO
 	};
 
 	/**

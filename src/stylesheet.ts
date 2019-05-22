@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as postcss from 'postcss';
 import * as path from 'path';
+import * as fs from 'fs';
 import { LinksMap, LayerSelectorLink } from './link';
 import { CssUtil } from './util/css-util';
 
@@ -14,18 +15,21 @@ const noopPlugin = postcss.plugin('postcss-noop', () => {
     return async () => {}; 
 });
 
-
 /**
  * Represents a stylesheet document, including its scopes, warning, and decorations.
  */
 export class Stylesheet {
 
     // Properties
-    text: string;
-    baseScope: StylesheetScope;
-    version: number;
-    decorations: vscode.TextEditorDecorationType[];
-    links: LinksMap;
+    document: vscode.TextDocument;
+    private text!: string;
+    private baseScope!: StylesheetScope;
+    private version!: number;
+    private decorations!: vscode.TextEditorDecorationType[];
+    private warnings!: vscode.Diagnostic[];
+    private links!: LinksMap;
+
+    // Properties to manage the file parsing lifecycle
     private parsePromise?: postcss.LazyResult = undefined;
     private parsedCallbacks: Function[] = [];
 
@@ -33,14 +37,21 @@ export class Stylesheet {
      * 
      * @param editor Current editor
      */
-    constructor(
-        private editor: vscode.TextEditor,
-        private diagnostics: vscode.DiagnosticCollection
-    ){
-        this.text = this.editor.document.getText();
+    constructor(document: vscode.TextDocument){
+        this.document = document;
+        this.loadFile();
+    }
+
+    /**
+     * Loads the class properties based on the document property. Can be called to reset the class (e.g. if the file has changed)
+     */
+    private loadFile(){
+        // Load initial properties
+        this.text = fs.readFileSync(this.document.uri.fsPath, {encoding: 'utf8'});
         this.baseScope = new StylesheetScope('body'); // TODO This should be made more flexible to accomodate other root selectors
-        this.version = this.editor.document.version;
+        this.version = this.document.version;
         this.decorations = [];
+        this.warnings = [];
         this.links = {};
         
         // Parse the file
@@ -63,9 +74,6 @@ export class Stylesheet {
                 this.runCallbacks();
             }
         });
-        this.parsePromise.catch(error => {
-            console.warn('Malformed CSS');
-        });
     }
 
     /**
@@ -84,7 +92,7 @@ export class Stylesheet {
      * If there is no parsing pending, the function will be ran immediatelly.
      * @param fn 
      */
-    addParsedFileCallback(fn: Function){
+    private addParsedFileCallback(fn: Function){
         if(!this.parsePromise){
             // THere is no pending parsing. Just run the function
             fn();
@@ -147,60 +155,6 @@ export class Stylesheet {
     }
 
     /**
-     * Updates the links in the stylesheet file
-     * @param links 
-     */
-    updateLinks(links: LinksMap){
-        // // First, dispose of the current decorations and diagnostic messages
-        // this.clear();        
-        // this.diagnostics.delete(this.editor.document.uri);
-        
-        // // Then, add the links and generate diagnostic messages
-        // let warnings: vscode.Diagnostic[] = [];
-        // this.links = links;
-        // for(let scopeId in this.links){
-        //     let links = this.links[scopeId];
-        //     links.forEach(link => {
-        //         let scope = this.getScope(link.scopeId);
-        //         if(scope){
-        //             // Add decoration to selector
-        //             this.addCodeDecoration(link, scope);
-        //             // Add scope warnings
-        //             warnings.push(...this.getScopeWarnings(scope, link.layer.styles));
-        //         }
-        //     });
-        // }
-
-        // // Add the warning messages
-        // this.diagnostics.set(this.editor.document.uri, warnings);
-    }
-
-    /**
-     * Generates editor warning messages for properties within a scope
-     * @param scope 
-     * @param layerStyles Reference CssProperties for the scope
-     */
-    getScopeWarnings(scope: StylesheetScope, layerStyles: CssProperties): vscode.Diagnostic[] {
-        let warnings: vscode.Diagnostic[] = [];
-        // Find different and missing properties
-        // let missing = scope.findMissingProperties(layerStyles);
-        // let different = scope.diffIntersectingCssProperties(layerStyles);
-        // // Create warnings for missing properties
-        // for(let missingProp in missing){
-        //     let missingValue = layerStyles[missingProp];
-        //     let message = `Figma: missing ${missingProp}: ${missingValue};`;
-        //     warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
-        // }
-        // // Create warnings for differences
-        // for(let diffProp in different){
-        //     let diffValue = different[diffProp];
-        //     let message = `Figma: expected ${diffProp}: ${diffValue};`;
-        //     warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
-        // }
-        return warnings;        
-    }
-
-    /**
 	 * 
 	 * @param layer 
 	 */
@@ -244,33 +198,6 @@ export class Stylesheet {
             gutterIconSize: 'auto',
 			isWholeLine: false,
 		});
-    }
-    
-    /**
-     * Removes all decorations currently in place
-     */
-    clear() {
-        // // Remove decorations
-        // this.decorations.forEach(d => {
-        //     d.dispose();
-        // });
-    }
-
-    /**
-     * Gets a scope by it's full css selector
-     * TODO implement a scope map for faster access
-     * @param selector full css selector, starting from root scope
-     */
-    getScope(selector: string): StylesheetScope | undefined{
-        let scope = this._getScope(selector, this.baseScope);
-        return scope;
-    }
-
-    /**
-     * Returns an array of strings with all full css selectors within the base scope
-     */
-    getAllSelectors(): string[] {
-        return this.baseScope.getAllSelectorsList();
     }
 
     /**
@@ -318,7 +245,7 @@ export class Stylesheet {
             let colNumber = startPosition.character;
             let nonWSColNumber = colNumber; // Keeps track of the latest non whitepsace character in the line
             do {
-                let lineText = this.editor.document.lineAt(lineNumber).text;
+                let lineText = this.document.lineAt(lineNumber).text;
                 // Search within the line
                 while(colNumber < lineText.length){
                     // Check if character is the correct one
@@ -338,9 +265,74 @@ export class Stylesheet {
                 // Line ended and still haven't found it. Look in the next line.
                 lineNumber++;
                 colNumber = 0;
-            } while(lineNumber < this.editor.document.lineCount);
+            } while(lineNumber < this.document.lineCount);
         }
         return undefined;
+    }
+
+    /*
+     * PUBLIC API 
+     */
+
+     /**
+     * Removes all decorations currently in place
+     */
+    clear() {
+        // // Remove decorations
+        // this.decorations.forEach(d => {
+        //     d.dispose();
+        // });
+    }
+
+    /**
+     * Gets a scope by it's full css selector
+     * TODO implement a scope map for faster access
+     * @param selector full css selector, starting from root scope
+     */
+    getScope(selector: string): StylesheetScope | undefined{
+        let scope = this._getScope(selector, this.baseScope);
+        return scope;
+    }
+
+    /**
+     * Returns an array of strings with all full css selectors within the base scope
+     */
+    getAllSelectors(): string[] {
+        return this.baseScope.getAllSelectorsList();
+    }
+
+    
+    /**
+     * Updates the links in the stylesheet file
+     * @param links 
+     */
+    updateLinks(links: LinksMap){
+        // TODO
+    }
+
+    /**
+     * Generates editor warning messages for properties within a scope
+     * @param scope 
+     * @param layerStyles Reference CssProperties for the scope
+     */
+    getWarnings(scope: StylesheetScope, layerStyles: CssProperties): vscode.Diagnostic[] {
+        let warnings: vscode.Diagnostic[] = [];
+        // Find different and missing properties
+        let missing = scope.findMissingProperties(layerStyles);
+        let different = scope.diffIntersectingCssProperties(layerStyles);
+        // Create warnings for missing properties
+        for(let missingProp in missing){
+            let missingValue = layerStyles[missingProp];
+            let message = `Figma: missing ${missingProp}: ${missingValue};`;
+            warnings.push(new vscode.Diagnostic(scope.getRange(scope.selector), message, vscode.DiagnosticSeverity.Warning));
+        }
+        // Create warnings for differences
+        for(let diffProp in different){
+            let diffValue = different[diffProp];
+            let message = `Figma: expected ${diffProp}: ${diffValue};`;
+            warnings.push(new vscode.Diagnostic(scope.getRange(diffProp), message, vscode.DiagnosticSeverity.Warning));
+        }
+        return warnings;        
     }
 }
 

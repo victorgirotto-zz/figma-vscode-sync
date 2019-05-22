@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as Figma from 'figma-js';
 import { DataStorage } from './storage';
-import { Stylesheet, StylesheetScope, CssProperties } from './stylesheet';
+import { Stylesheet, CssProperties } from './stylesheet';
 import { FigmaFile } from './figmafile';
-import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider, LinksManagerProvider } from './sidebar';
+import { FigmaLayerProvider, FigmaLayer, CssPropertiesProvider } from './sidebar';
 import { LayerSelectorLink, LinksMap, IdOrder } from './link';
 
 export const supportedLanguages = ['less']; // List of supported file types
@@ -28,14 +28,12 @@ export class WorkspaceState {
     private context: vscode.ExtensionContext;
     private config: vscode.WorkspaceConfiguration;
     private diagnostics: vscode.DiagnosticCollection;
-    private files: vscode.Uri[];
-    private stylesheets: {[uri: string]: Stylesheet};
     
     // Persisted properties API
     private storage!: DataStorage; // for persisting and retrieving data
     
     // View managers
-	private stylesheet!: Stylesheet; // Represents the style scopes in the current file
+    private stylesheets: {[uri: string]: Stylesheet};
     private sidebarProvider!: FigmaLayerProvider; // Represents and manipulates all FigmaLayer instances
     private treeView!: vscode.TreeView<FigmaLayer>;
 
@@ -49,63 +47,53 @@ export class WorkspaceState {
         this.context = context;
         this.diagnostics = diagnostics;
         this.config = vscode.workspace.getConfiguration();
-        this.files = [];
         this.stylesheets = {};
 
         // Get list of files and begin tracking them
         vscode.workspace.findFiles(`**/*.{${supportedLanguages.join(',')}}`).then((fileURIs) => {
-            fileURIs.forEach(file => {
-                this.trackFile(file);
-            });
+            this.trackFiles(fileURIs);
         });
 
         // Load from storage
-        this.load();
+        this.loadFromStorage();
     }
 
     /**
      * Based on the vscode properties, loads data from storage and sets up the views
      */
-    load() {
+    loadFromStorage() {
         // Load persisted data
 		this.storage = new DataStorage(this.context);
         
         // Set initial view states
         this.status = this.getDefaultStatus();
         this.loadSidebar();
-        this.loadStyleSheetView();
         this.createCssPropertiesProvider();
-        // this.createLinksManagerProvider();
+        this.createLinksManagerProvider();
     }
 
     /**
      * Removes any lingering elements from the screen
      */
-    dispose(){
-        // Remove decorations
-        this.stylesheet.clear();
-    }
-
-    /**
-     * Updates the state when the text editor changes
-     */
-    handleEditorChange(){
-        // Parse the new file
-        this.loadStyleSheetView();
+    dispose(){ 
+        // Remove decorations from all stylesheets
+        for(let path in this.stylesheets){
+            let stylesheet = this.stylesheets[path];
+            stylesheet.clear();
+        }
     }
     
     /**
-     * Begins tracking a supported file. To do that, it adds the file URI to a list of tracked files, 
-     * and also parses it and stores its parsed object in memory.
+     * Begins tracking a list of supported files. A map of tracked files is kept in the stylesheets property in this class.
      * @param fileURI URI of the file to be tracked
      */
-    trackFile(fileURI: vscode.Uri){
-        // Add to list of files
-        this.files.push(fileURI);
+    trackFiles(fileUris: vscode.Uri[]){
         // Parse and store it
-        vscode.workspace.openTextDocument(fileURI).then(document => {
-            // let stylesheet = new Stylesheet(fileURI, this.diagnostics);
-            // this.stylesheets[fileURI.fsPath] = stylesheet;
+        fileUris.forEach(uri => {
+            vscode.workspace.openTextDocument(uri).then(document => {
+                let stylesheet = new Stylesheet(document);
+                this.stylesheets[uri.fsPath] = stylesheet;
+            });
         });
     }
 
@@ -125,30 +113,33 @@ export class WorkspaceState {
      * Returns an array representing all existing links between figma layers and selectors
      */
     get links(): LayerSelectorLink[] {
-        let linkIds = this.linksIds;
-        let links = linkIds.reduce((acc, ids) => {
-            let layer = this.getLayerById(ids[IdOrder.Layer]);
-            let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
-            if(scope && layer){
-                acc.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
-            }
-            return acc;
-        }, [] as LayerSelectorLink[]);
-        return links;
+        // let linkIds = this.linksIds;
+        // let links = linkIds.reduce((acc, ids) => {
+        //     let layer = this.getLayerById(ids[IdOrder.Layer]);
+        //     let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
+        //     if(scope && layer){
+        //         acc.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
+        //     }
+        //     return acc;
+        // }, [] as LayerSelectorLink[]);
+        // return links;
+        throw Error('Not implemented');
     }
 
     /**
      * Returns a set of all existing links indexed by the layer id
      */
     get linksByLayer(): LinksMap {
-        return this._getLinksBy(IdOrder.Layer);
+        // return this._getLinksBy(IdOrder.Layer);
+        throw Error('Not implemented');
     }
     
     /**
      * Returns a set of all existing links indexed by the layer id
      */
     get linksBySelector(): LinksMap {
-        return this._getLinksBy(IdOrder.Scope);
+        // return this._getLinksBy(IdOrder.Scope);
+        throw Error('Not implemented');
     }
 
     /**
@@ -156,11 +147,12 @@ export class WorkspaceState {
      * @param layer 
      */
     isLayerLinked(layer: FigmaLayer): boolean{
-        let links = this.linksByLayer;
-        if(layer.id in links){
-            return true;
-        }
-        return false;
+        // let links = this.linksByLayer;
+        // if(layer.id in links){
+        //     return true;
+        // }
+        // return false;
+        throw Error('Not implemented');
     }
 
     /**
@@ -168,114 +160,62 @@ export class WorkspaceState {
      * @param type index of the desired mapping (from the IdOrder enum)
      */
     private _getLinksBy(type: IdOrder): LinksMap{
-        let links = this.storage.links;
-        let linksMap = links.reduce((acc, ids) => {
-            // Retrieve both
-            let layer = this.getLayerById(ids[IdOrder.Layer]);
-            let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
-            let key = ids[type];
-            // If both found, add to object
-            if(layer && scope){
-                let linksArray = acc[key];
-                if(!linksArray){
-                    // If this is the first link for this layer, create the array
-                    linksArray = [];
-                }
-                // Add to array and to acc object
-                linksArray.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
-                acc[key] = linksArray;
-            }
-            return acc;
-        }, {} as LinksMap);
-        return linksMap;
+        // let links = this.storage.links;
+        // let linksMap = links.reduce((acc, ids) => {
+        //     // Retrieve both
+        //     let layer = this.getLayerById(ids[IdOrder.Layer]);
+        //     let scope = this.getScopeByFullSelector(ids[IdOrder.Scope]);
+        //     let key = ids[type];
+        //     // If both found, add to object
+        //     if(layer && scope){
+        //         let linksArray = acc[key];
+        //         if(!linksArray){
+        //             // If this is the first link for this layer, create the array
+        //             linksArray = [];
+        //         }
+        //         // Add to array and to acc object
+        //         linksArray.push(new LayerSelectorLink(this.currentFilePath, layer, scope));
+        //         acc[key] = linksArray;
+        //     }
+        //     return acc;
+        // }, {} as LinksMap);
+        // return linksMap;
+        throw Error('Not implemented');
     }
     
     /**
-     * Adds or replaces a link between a layer and a css scope.
-     * 
-     * This will cause views to update accordingly 
-     * @param layer 
-     * @param scope 
+     * Creates the provider for the links view
      */
-    addLink(layer: FigmaLayer, scope: StylesheetScope) {
-        console.log(this.currentFilePath);
-        // Create link
-        let link = new LayerSelectorLink(this.currentFilePath, layer, scope);
-        // Persist it
-        // this.storage.addLink(link.ids);
-        // Update views
-        // this.updateViewsWithLinks();
-    }
-
-    /**
-     * Removes the link for a given layer
-     * @param layer 
-     */
-    removeLayerLink(layer: FigmaLayer){
-        this.storage.removeLayerLinks(layer);
-        // Update views
-        this.updateViewsWithLinks();
-    }
-    
-    /**
-     * Updates the views with the current links
-     */
-    updateViewsWithLinks(){
-        // TODO
-        // Update links manager view
-        // this.createLinksManagerProvider(this.links);
-        
-        // // Update links in views
+    createLinksManagerProvider(){
+        // Update links in views
         // this.figmaLayerProvider.updateLinks(this.linksByLayer);
         // this.stylesheet.updateLinks(this.linksBySelector);
+        
     }
-
-    /**
-     * Creates the provider for the links manager view
-     * @param links 
-     */
-    createLinksManagerProvider(links?: LayerSelectorLink[]){
-        vscode.window.createTreeView('linksManager', {
-            treeDataProvider: new LinksManagerProvider(links),
-            showCollapseAll: true
-        });
-    }
-
 
     /*===============
         STYLESHEET
     ================*/
 
     /**
-     * Parses all stylesheets in the workspace and keeps them in memory
+     * Returns the Stylesheet instance for the currently open stylesheet
      */
-    parseStyleSheets(){
-        // TODO
-    }
-    
-
-    /**
-     * Loads the view based on the current file
-     */
-    loadStyleSheetView(){
-
-        // Only load for supported file types
-        if(this.editor && supportedLanguages.includes(this.editor.document.languageId)){
-            // Instantiate view the stylesheet view manager
-            this.stylesheet = new Stylesheet(this.editor, this.diagnostics);
-            // Wait for the file parsing to end before continuing with loading
-            this.stylesheet.addParsedFileCallback(()=>{
-                // Load links
-                this.updateViewsWithLinks();
-            });
+    get currentStylesheet(): Stylesheet | undefined {
+        if(this.editor){
+            let filePath = this.editor.document.uri.fsPath;
+            if(filePath in this.stylesheets){
+                return this.stylesheets[filePath];
+            }
         }
     }
 
     /**
-     * Returns all available selectors
+     * Returns all available selectors for the currently open file
      */
-    get selectors(): string[] {
-        return this.stylesheet.getAllSelectors();
+    get selectors(): string[] | undefined {
+        if(this.currentStylesheet){
+            return this.currentStylesheet.getAllSelectors();
+        }
     }
 
     /**
@@ -283,7 +223,9 @@ export class WorkspaceState {
      * @param fullSelector 
      */
 	getScopeByFullSelector(fullSelector: string) {
-		return this.stylesheet.getScope(fullSelector);
+        if(this.currentStylesheet){
+            return this.currentStylesheet.getScope(fullSelector);
+        }
     }
     
     /**
@@ -291,12 +233,14 @@ export class WorkspaceState {
      * @param scopeName 
      */
     highlightScopeByName(scopeName: string){
-        let scope = this.stylesheet.getScope(scopeName);
-        let editor = this.editor;
-        if(scope && editor){
-            let scopeRange = scope.getSelectorRange();
-            editor.revealRange(scopeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-            editor.selection = new vscode.Selection(scopeRange.start, scopeRange.end);
+        if(this.currentStylesheet){
+            let scope = this.currentStylesheet.getScope(scopeName);
+            let editor = this.editor;
+            if(scope && editor){
+                let scopeRange = scope.getSelectorRange();
+                editor.revealRange(scopeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+                editor.selection = new vscode.Selection(scopeRange.start, scopeRange.end);
+            }
         }
     }
 
@@ -508,7 +452,7 @@ export class WorkspaceState {
         // Delete data
         this.storage.removeFile(fileKey);
         // Reload the views
-        this.load();
+        this.loadFromStorage();
     }
 
     /**
