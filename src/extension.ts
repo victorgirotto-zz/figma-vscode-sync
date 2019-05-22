@@ -143,7 +143,11 @@ export function activate(context: vscode.ExtensionContext) {
 			if(value){
 				// If the user added a comment, post it
 				state.postComment(value, layer).then(isPosted => {
-					vscode.window.showInformationMessage('Your comment was posted on Figma');
+					if(isPosted){
+						vscode.window.showInformationMessage('Your comment was posted on Figma');
+					} else {
+						vscode.window.showWarningMessage('Your comment was not posted');
+					}
 				});			
 			}
 		});

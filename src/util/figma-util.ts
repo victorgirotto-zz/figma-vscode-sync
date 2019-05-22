@@ -85,7 +85,6 @@ export class FigmaUtil {
                             FigmaUtil.Px(effect.radius) + ' ' +
                             FigmaUtil.GetColorString(effect.color);
                     }
-                    // TODO handle blur
                 });
                 break;
         }
@@ -104,15 +103,16 @@ export class FigmaUtil {
     /**
     * Returns a color string for a Figma.Color. If alpha is different than 1, the string will be in rgba format. Otherwise, hex.
     * 
-    * @param color Figma.Color instance
+    * @param color
     */
-    static GetColorString(fill: Figma.Paint): string | undefined{
-        let color = fill.color;
+    static GetColorString(fill: any): string | undefined{
+        let color = 'color' in fill ? fill.color : fill;
+        let opacity = 'opacity' in fill ? fill.opacity : 1;
         if(color){
             // Create rounding fn
-            let round = (n:number) => Math.round(n * 10) / 10;
+            let round = (n:number) => Math.round(n * 100) / 100;
             // Round values
-            let alpha = round(color.a * fill.opacity);
+            let alpha = round(color.a * opacity);
             let r = color.r;
             let g = color.g;
             let b = color.b;
