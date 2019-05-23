@@ -86,7 +86,7 @@ export class FigmaUtil {
                             FigmaUtil.GetColorString(effect.color);
                     }
                 });
-                break;
+                break; 
         }
         // Return properties
         return css;
